@@ -1,0 +1,17 @@
+# Secrets - never commit
+backend/.env
+
+# Test artefacts
+backend/test_*.db
+.pytest_cache/
+.ruff_cache/
+
+# Python
+__pycache__/
+*.pyc
+backend/venv/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/

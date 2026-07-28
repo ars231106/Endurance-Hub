@@ -1,0 +1,18 @@
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q --strict-markers"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+# Pyflakes (undefined names, unused imports) plus the high-value pycodestyle
+# checks. Deliberately not the full style ruleset - lint should catch bugs,
+# not argue about formatting.
+select = ["E4", "E7", "E9", "F", "I"]
+
+[tool.ruff.lint.per-file-ignores]
+# main.py loads .env before importing anything that reads env vars at
+# import time, so its imports are intentionally not all at the top.
+"app/main.py" = ["E402"]

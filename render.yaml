@@ -1,0 +1,34 @@
+# Render Blueprint: provisions the web service and its database together.
+# In Render, choose "New > Blueprint" and point it at this repository.
+services:
+  - type: web
+    name: endurancehub
+    runtime: docker
+    plan: free
+    healthCheckPath: /health
+    # Every push to main redeploys automatically.
+    autoDeploy: true
+    envVars:
+      # Generated once and kept secret - never the dev default.
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DATABASE_URL
+        fromDatabase:
+          name: endurancehub-db
+          property: connectionString
+      # Set these in the Render dashboard to send real verification
+      # emails; leave unset and codes are logged instead.
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        sync: false
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+
+databases:
+  - name: endurancehub-db
+    plan: free
+    databaseName: endurancehub
+    user: endurancehub

@@ -1,0 +1,2508 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EnduranceHub — Training analytics that actually explain your training</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #0b0f14; --bg-alt: #0e141b; --card: #151d26; --card2: #1c2733; --border: #263241;
+    --text: #eef3f8; --muted: #8b98a5; --accent: #ff6b35; --accent2: #4ecdc4; --purple: #a78bfa;
+    --danger: #e74c3c; --radius: 14px; --maxw: 1140px;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; overflow-x: hidden; line-height: 1.5; }
+  .hidden { display: none !important; }
+  button { font-family: inherit; }
+  a { color: inherit; text-decoration: none; }
+
+  /* ---------- icons ----------
+     Every glyph inherits colour from its parent and scales with font-size,
+     so one sprite serves buttons, headings and tiles alike. */
+  .ic { width: 1em; height: 1em; display: inline-block; vertical-align: -0.14em; flex-shrink: 0;
+    fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+  .ic.sm { stroke-width: 2; }
+  .ic.thin { stroke-width: 1.5; }
+
+  /* Native select arrows look like Windows 95; replace with our own
+     chevron drawn as an inline data-URI background. */
+  select {
+    appearance: none; -webkit-appearance: none; -moz-appearance: none;
+    background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238b98a5' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9.5l6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 11px center; background-size: 15px;
+    padding-right: 34px !important;
+  }
+  select:hover { background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23ff6b35' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9.5l6 6 6-6'/%3E%3C/svg%3E"); }
+  select option { background: var(--card); color: var(--text); }
+  /* Date inputs get a themed picker button instead of a black-on-dark one. */
+  input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(65%) sepia(8%) saturate(400%) hue-rotate(170deg); cursor: pointer; }
+
+  /* ---------- scrollbars ----------
+     Firefox gets the two-property standard; Chrome and Edge get the
+     WebKit pseudo-elements. The thumb's transparent border is what makes
+     it look inset rather than glued to the edge. */
+  * { scrollbar-width: thin; scrollbar-color: #33445a transparent; }
+  ::-webkit-scrollbar { width: 11px; height: 11px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #33445a; border-radius: 10px; border: 3px solid transparent; background-clip: content-box; transition: background .2s; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--accent); background-clip: content-box; }
+  ::-webkit-scrollbar-thumb:active { background: #ff8f5e; background-clip: content-box; }
+  ::-webkit-scrollbar-corner { background: transparent; }
+  /* Removes the little arrow buttons at each end. */
+  ::-webkit-scrollbar-button { display: none; }
+
+  .btn { display: inline-block; padding: 14px 30px; background: linear-gradient(135deg, var(--accent), #ff8f5e); color: #fff; border: none; border-radius: 10px; font-size: 15px; font-weight: 600; cursor: pointer; transition: transform .2s, box-shadow .2s; }
+  .btn:hover { transform: translateY(-2px); box-shadow: 0 10px 28px rgba(255,107,53,.35); }
+  .btn-ghost { display: inline-block; padding: 13px 28px; background: transparent; color: var(--text); border: 1px solid var(--border); border-radius: 10px; font-size: 15px; cursor: pointer; transition: border-color .2s, transform .2s; }
+  .btn-ghost:hover { border-color: var(--accent2); transform: translateY(-2px); }
+
+  .orb { position: fixed; border-radius: 50%; filter: blur(100px); opacity: .16; z-index: 0; pointer-events: none; }
+  .orb1 { width: 460px; height: 460px; background: var(--accent); top: -150px; left: -120px; animation: drift1 20s ease-in-out infinite alternate; }
+  .orb2 { width: 400px; height: 400px; background: var(--accent2); top: 45%; right: -140px; animation: drift2 24s ease-in-out infinite alternate; }
+  @keyframes drift1 { to { transform: translate(80px, 70px) scale(1.15); } }
+  @keyframes drift2 { to { transform: translate(-70px, -60px) scale(1.1); } }
+
+  .reveal { opacity: 0; transform: translateY(26px); transition: opacity .7s ease, transform .7s ease; }
+  .reveal.visible { opacity: 1; transform: none; }
+
+  /* ---------- landing nav ---------- */
+  nav { position: fixed; top: 0; left: 0; right: 0; display: flex; justify-content: space-between; align-items: center; padding: 15px 5vw; background: rgba(11,15,20,.72); backdrop-filter: blur(16px); border-bottom: 1px solid rgba(38,50,65,.6); z-index: 60; }
+  .logo { font-size: 21px; font-weight: 800; letter-spacing: -.4px; }
+  .logo span { color: var(--accent); }
+  .nav-links { display: flex; gap: 26px; font-size: 14px; color: var(--muted); }
+  .nav-links a { transition: color .2s; }
+  .nav-links a:hover { color: var(--text); }
+  .nav-actions { display: flex; gap: 10px; }
+  .nav-actions .btn, .nav-actions .btn-ghost { padding: 9px 20px; font-size: 14px; }
+  @media (max-width: 900px) { .nav-links { display: none; } }
+
+  /* ---------- hero ---------- */
+  .hero { position: relative; z-index: 1; display: grid; grid-template-columns: 1.05fr .95fr; gap: 50px; align-items: center; max-width: var(--maxw); margin: 0 auto; padding: 145px 5vw 60px; }
+  @media (max-width: 940px) { .hero { grid-template-columns: 1fr; text-align: center; padding-top: 120px; } .hero-visual { order: 2; } }
+  .eyebrow { display: inline-block; padding: 7px 16px; border: 1px solid var(--border); border-radius: 30px; font-size: 13px; color: var(--accent2); margin-bottom: 22px; }
+  .hero h1 { font-size: clamp(36px, 5.2vw, 60px); line-height: 1.06; font-weight: 800; letter-spacing: -1.6px; }
+  .grad-text { background: linear-gradient(90deg, var(--accent), var(--accent2), var(--purple), var(--accent)); background-size: 300% auto; -webkit-background-clip: text; background-clip: text; color: transparent; animation: shimmer 7s linear infinite; }
+  @keyframes shimmer { to { background-position: 300% center; } }
+  .hero p.lead { color: var(--muted); font-size: 17px; max-width: 520px; margin: 20px 0 30px; line-height: 1.65; }
+  @media (max-width: 940px) { .hero p.lead { margin-left: auto; margin-right: auto; } }
+  .hero-cta { display: flex; gap: 12px; flex-wrap: wrap; }
+  @media (max-width: 940px) { .hero-cta { justify-content: center; } }
+  .hero-note { color: var(--muted); font-size: 13px; margin-top: 16px; }
+
+  .hero-visual { position: relative; }
+  .mock { background: var(--card); border: 1px solid var(--border); border-radius: 18px; padding: 22px; box-shadow: 0 24px 60px rgba(0,0,0,.5); animation: float 6s ease-in-out infinite; }
+  @keyframes float { 50% { transform: translateY(-12px); } }
+  .mock-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; font-size: 13px; color: var(--muted); }
+  .mock-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 18px; }
+  .mock-stat { background: var(--card2); border-radius: 10px; padding: 12px; }
+  .mock-stat .v { font-size: 19px; font-weight: 800; }
+  .mock-stat .l { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .8px; margin-top: 2px; }
+  .mock-bars { display: flex; align-items: flex-end; gap: 8px; height: 110px; padding-top: 8px; }
+  .mock-bars div { flex: 1; background: linear-gradient(180deg, var(--accent), rgba(255,107,53,.35)); border-radius: 5px 5px 0 0; animation: grow 1.4s cubic-bezier(.2,.8,.3,1) backwards; }
+  @keyframes grow { from { height: 0 !important; } }
+  .float-pill { position: absolute; background: var(--card); border: 1px solid var(--border); border-radius: 30px; padding: 9px 16px; font-size: 13px; font-weight: 600; box-shadow: 0 10px 30px rgba(0,0,0,.45); }
+  .fp1 { top: -14px; right: -6px; color: var(--accent2); animation: float 5s ease-in-out infinite .6s; }
+  .fp2 { bottom: -16px; left: -10px; color: var(--accent); animation: float 5.6s ease-in-out infinite .3s; }
+  @media (max-width: 940px) { .float-pill { display: none; } }
+
+  .trust { position: relative; z-index: 1; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); background: var(--bg-alt); }
+  .trust-inner { max-width: var(--maxw); margin: 0 auto; padding: 26px 5vw; display: flex; gap: 44px; justify-content: center; flex-wrap: wrap; }
+  .tstat { text-align: center; }
+  .tstat .num { font-size: 28px; font-weight: 800; color: var(--accent2); }
+  .tstat .lbl { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: 1.1px; margin-top: 2px; }
+
+  .marquee { position: relative; z-index: 1; overflow: hidden; padding: 20px 0; border-bottom: 1px solid var(--border); -webkit-mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent); mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent); }
+  .marquee-track { display: flex; gap: 14px; width: max-content; animation: scroll 32s linear infinite; }
+  .marquee:hover .marquee-track { animation-play-state: paused; }
+  @keyframes scroll { to { transform: translateX(-50%); } }
+  .chip { padding: 9px 20px; background: var(--card); border: 1px solid var(--border); border-radius: 30px; font-size: 13px; color: var(--muted); white-space: nowrap; }
+  .chip b { color: var(--text); }
+
+  .section { position: relative; z-index: 1; max-width: var(--maxw); margin: 0 auto; padding: 96px 5vw 0; }
+  .section-head { text-align: center; margin-bottom: 52px; }
+  .section-head h2 { font-size: clamp(26px, 3.6vw, 40px); font-weight: 800; letter-spacing: -.8px; line-height: 1.15; }
+  .section-head p { color: var(--muted); margin: 14px auto 0; max-width: 540px; line-height: 1.65; }
+  .kicker { color: var(--accent); font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.6px; margin-bottom: 12px; }
+
+  .frow { display: grid; grid-template-columns: 1fr 1fr; gap: 56px; align-items: center; margin-bottom: 80px; }
+  .frow:nth-child(even) .fvis { order: -1; }
+  @media (max-width: 900px) { .frow { grid-template-columns: 1fr; gap: 32px; } .frow:nth-child(even) .fvis { order: 0; } }
+  .frow h3 { font-size: clamp(21px, 2.6vw, 28px); font-weight: 800; letter-spacing: -.5px; margin-bottom: 14px; }
+  .frow p { color: var(--muted); line-height: 1.7; }
+  .flist { list-style: none; margin-top: 18px; }
+  .flist li { color: var(--muted); font-size: 14px; padding: 7px 0 7px 26px; position: relative; }
+  /* Checkmark drawn as a masked SVG so it matches the icon set's stroke. */
+  .flist li::before { content: ""; position: absolute; left: 0; top: 11px; width: 15px; height: 15px; background: var(--accent2);
+    -webkit-mask: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5l5 5L19 7'/%3E%3C/svg%3E") no-repeat center/contain;
+    mask: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5l5 5L19 7'/%3E%3C/svg%3E") no-repeat center/contain; }
+  .fvis { background: var(--card); border: 1px solid var(--border); border-radius: 18px; padding: 24px; transition: transform .35s, border-color .35s; }
+  .fvis:hover { transform: translateY(-6px); border-color: var(--accent); }
+
+  .load-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+  .load-grid div { aspect-ratio: 1; border-radius: 5px; background: var(--card2); }
+  .lv1 { background: rgba(255,107,53,.25) !important; } .lv2 { background: rgba(255,107,53,.5) !important; }
+  .lv3 { background: rgba(255,107,53,.75) !important; } .lv4 { background: var(--accent) !important; }
+  .pr-list { display: flex; flex-direction: column; gap: 10px; }
+  .pr-item { display: flex; justify-content: space-between; align-items: center; background: var(--card2); border-radius: 10px; padding: 14px 16px; font-size: 14px; }
+  .pr-item .pv { font-weight: 800; color: var(--accent2); }
+  .pace-line { height: 120px; }
+
+  .tabs-row { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-bottom: 30px; }
+  .mtab { padding: 10px 22px; background: transparent; border: 1px solid var(--border); border-radius: 30px; color: var(--muted); font-size: 14px; cursor: pointer; transition: all .2s; }
+  .mtab.active { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+  .metric-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 16px; }
+  .mcard { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; transition: transform .3s, border-color .3s, box-shadow .3s; }
+  .mcard:hover { transform: translateY(-7px); border-color: var(--accent2); box-shadow: 0 16px 40px rgba(0,0,0,.4); }
+  .mcard .mi { font-size: 24px; margin-bottom: 12px; color: var(--accent); line-height: 1; }
+  .mcard:nth-child(2) .mi { color: var(--accent2); }
+  .mcard:nth-child(3) .mi { color: var(--purple); }
+  .mcard h4 { font-size: 16px; margin-bottom: 8px; }
+  .mcard p { color: var(--muted); font-size: 14px; line-height: 1.6; }
+
+  .steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 18px; counter-reset: step; }
+  .step { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 28px; transition: transform .3s, border-color .3s; }
+  .step:hover { transform: translateY(-7px); border-color: var(--accent); }
+  .step::before { counter-increment: step; content: "0" counter(step); font-size: 42px; font-weight: 800; color: transparent; -webkit-text-stroke: 1.5px var(--accent2); display: block; margin-bottom: 14px; }
+  .step h4 { font-size: 16px; margin-bottom: 8px; }
+  .step p { color: var(--muted); font-size: 14px; line-height: 1.6; }
+
+  .persona-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 18px; }
+  .persona { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 26px; transition: transform .3s, border-color .3s; }
+  .persona:hover { transform: translateY(-7px); border-color: var(--purple); }
+  .persona .ptag { display: inline-block; padding: 5px 14px; border-radius: 20px; font-size: 12px; font-weight: 600; background: rgba(167,139,250,.14); color: var(--purple); margin-bottom: 14px; }
+  .persona h4 { font-size: 17px; margin-bottom: 10px; }
+  .persona p { color: var(--muted); font-size: 14px; line-height: 1.65; }
+
+  .faq { max-width: 780px; margin: 0 auto; }
+  .faq-item { border-bottom: 1px solid var(--border); }
+  .faq-q { width: 100%; display: flex; justify-content: space-between; align-items: center; gap: 16px; background: none; border: none; color: var(--text); font-size: 16px; text-align: left; padding: 22px 0; cursor: pointer; transition: color .2s; }
+  .faq-q:hover { color: var(--accent); }
+  .faq-q .ico { width: 19px; height: 19px; color: var(--accent2); transition: transform .3s; flex-shrink: 0; }
+  .faq-item.open .faq-q .ico { transform: rotate(45deg); }
+  .faq-a { max-height: 0; overflow: hidden; transition: max-height .35s ease; }
+  .faq-a p { color: var(--muted); font-size: 15px; line-height: 1.7; padding-bottom: 22px; }
+
+  .cta-band { position: relative; z-index: 1; text-align: center; margin-top: 100px; padding: 78px 5vw; background: linear-gradient(135deg, rgba(255,107,53,.12), rgba(78,205,196,.09)); border-top: 1px solid var(--border); }
+  .cta-band h2 { font-size: clamp(25px, 3.2vw, 36px); font-weight: 800; letter-spacing: -.6px; margin-bottom: 14px; }
+  .cta-band p { color: var(--muted); margin-bottom: 26px; }
+  footer { position: relative; z-index: 1; background: var(--bg-alt); border-top: 1px solid var(--border); }
+  .foot-inner { max-width: var(--maxw); margin: 0 auto; padding: 52px 5vw 28px; display: grid; grid-template-columns: 1.6fr 1fr 1fr 1fr; gap: 34px; }
+  @media (max-width: 800px) { .foot-inner { grid-template-columns: 1fr 1fr; } }
+  .foot-brand p { color: var(--muted); font-size: 14px; line-height: 1.7; margin-top: 12px; max-width: 280px; }
+  .foot-col h5 { font-size: 13px; text-transform: uppercase; letter-spacing: 1.2px; color: var(--muted); margin-bottom: 14px; }
+  .foot-col a, .foot-col span { display: block; font-size: 14px; color: var(--muted); padding: 6px 0; cursor: pointer; transition: color .2s; }
+  .foot-col a:hover, .foot-col span:hover { color: var(--text); }
+  .foot-bottom { max-width: var(--maxw); margin: 0 auto; padding: 20px 5vw 34px; border-top: 1px solid var(--border); color: var(--muted); font-size: 13px; display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+
+  /* ================= AUTH ================= */
+  #auth-view { position: relative; z-index: 1; display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; }
+  .auth-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 38px; width: 100%; max-width: 410px; animation: pop .45s cubic-bezier(.2,.9,.3,1.2); }
+  @keyframes pop { from { opacity: 0; transform: translateY(24px) scale(.97); } }
+  .back-link { color: var(--muted); font-size: 13px; cursor: pointer; background: none; border: none; margin-bottom: 18px; }
+  .back-link:hover { color: var(--text); }
+  .tabs { display: flex; gap: 8px; margin: 20px 0; }
+  .tab { flex: 1; padding: 11px; border: 1px solid var(--border); background: transparent; color: var(--muted); border-radius: 9px; cursor: pointer; font-size: 14px; transition: all .2s; }
+  .tab.active { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+  label { display: block; font-size: 13px; color: var(--muted); margin: 13px 0 6px; }
+  input, select { width: 100%; padding: 12px 13px; background: var(--card2); border: 1px solid var(--border); border-radius: 9px; color: var(--text); font-size: 14px; transition: border-color .2s; font-family: inherit; }
+  input:focus, select:focus { outline: none; border-color: var(--accent); }
+  .auth-card .btn { width: 100%; margin-top: 22px; }
+  .error-msg { color: var(--danger); font-size: 13px; margin-top: 12px; min-height: 18px; }
+  .info-msg { color: var(--accent2); font-size: 13px; margin-top: 8px; min-height: 18px; }
+  .otp-row { display: flex; gap: 10px; justify-content: center; margin-top: 18px; }
+  .otp-box { width: 48px; height: 56px; text-align: center; font-size: 24px; font-weight: 700; background: var(--card2); border: 1px solid var(--border); border-radius: 10px; color: var(--text); transition: border-color .2s, transform .15s; }
+  .otp-box:focus { outline: none; border-color: var(--accent2); transform: scale(1.06); }
+  .resend-line { text-align: center; margin-top: 18px; font-size: 13px; color: var(--muted); }
+  .resend-line button { background: none; border: none; color: var(--accent2); cursor: pointer; font-size: 13px; }
+  .resend-line button:disabled { color: var(--muted); cursor: default; }
+  .check-row { display: flex; align-items: center; gap: 10px; margin: 18px 0 0; font-size: 13px; color: var(--muted); cursor: pointer; user-select: none; }
+  .check-row input { width: 17px; height: 17px; accent-color: var(--accent); cursor: pointer; flex-shrink: 0; }
+  .check-row:hover span { color: var(--text); }
+  .saved-user { display: flex; align-items: center; gap: 12px; background: var(--card2); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; margin: 18px 0 4px; font-size: 13px; }
+  .saved-user .su-av { width: 34px; height: 34px; border-radius: 50%; background: linear-gradient(135deg, var(--accent), var(--purple)); display: flex; align-items: center; justify-content: center; font-weight: 700; color: #fff; flex-shrink: 0; }
+  .saved-user .su-txt { flex: 1; min-width: 0; }
+  .saved-user .su-txt b { display: block; font-size: 13px; color: var(--text); }
+  .saved-user .su-txt span { color: var(--muted); font-size: 12px; word-break: break-all; }
+  .saved-user button { background: none; border: none; color: var(--muted); font-size: 16px; cursor: pointer; padding: 4px 6px; border-radius: 6px; }
+  .saved-user button:hover { color: var(--danger); }
+
+  /* ================= DASHBOARD ================= */
+  #app-view { position: relative; z-index: 1; }
+  header.app-bar { display: flex; justify-content: space-between; align-items: center; gap: 20px; padding: 0 3vw; height: 62px; border-bottom: 1px solid var(--border); background: rgba(11,15,20,.86); backdrop-filter: blur(16px); position: sticky; top: 0; z-index: 40; }
+  .bar-left { display: flex; align-items: center; gap: 30px; height: 100%; }
+  .bar-nav { display: flex; height: 100%; }
+  .bar-nav button { background: none; border: none; border-bottom: 3px solid transparent; color: var(--muted); font-size: 14px; padding: 0 16px; height: 100%; cursor: pointer; transition: all .2s; }
+  .bar-nav button:hover { color: var(--text); }
+  .bar-nav button.on { color: var(--text); border-bottom-color: var(--accent); font-weight: 600; }
+  .bar-right { display: flex; align-items: center; gap: 14px; }
+  .bar-btn { display: flex; align-items: center; gap: 7px; padding: 9px 18px; background: linear-gradient(135deg, var(--accent), #ff8f5e); color: #fff; border: none; border-radius: 9px; font-size: 14px; font-weight: 600; cursor: pointer; transition: transform .2s, box-shadow .2s; }
+  .bar-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 22px rgba(255,107,53,.35); }
+  .round-btn { width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--border); background: transparent; color: var(--muted); font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all .2s; }
+  .round-btn:hover { color: var(--accent); border-color: var(--accent); transform: rotate(90deg); }
+  .avatar { width: 36px; height: 36px; border-radius: 50%; background: linear-gradient(135deg, var(--accent), var(--purple)); display: flex; align-items: center; justify-content: center; font-weight: 700; color: #fff; font-size: 15px; cursor: pointer; transition: transform .2s; }
+  .avatar:hover { transform: scale(1.08); }
+  .menu-wrap { position: relative; }
+  .menu { position: absolute; right: 0; top: 46px; background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 6px; min-width: 200px; box-shadow: 0 16px 44px rgba(0,0,0,.55); animation: pop .18s ease; z-index: 50; }
+  .menu .mhead { padding: 12px 14px 10px; border-bottom: 1px solid var(--border); margin-bottom: 6px; }
+  .menu .mhead b { display: block; font-size: 14px; }
+  .menu .mhead span { font-size: 12px; color: var(--muted); word-break: break-all; }
+  .menu button { display: block; width: 100%; text-align: left; background: none; border: none; color: var(--muted); font-size: 14px; padding: 10px 14px; border-radius: 8px; cursor: pointer; transition: all .2s; }
+  .menu button:hover { background: var(--card2); color: var(--text); }
+  .menu button.danger:hover { color: var(--danger); }
+  @media (max-width: 780px) { .bar-nav { display: none; } }
+
+  .dash { max-width: 1240px; margin: 0 auto; padding: 26px 3vw 0; }
+
+  /* Sections stack full width instead of three columns, so a short feed
+     no longer leaves tall empty rails beside it. */
+  .sec { margin-bottom: 40px; }
+  .sec-head { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; flex-wrap: wrap; margin-bottom: 16px; }
+  .sec-head h2 { font-size: 20px; font-weight: 800; letter-spacing: -.4px; }
+  .sec-head .sub { font-size: 13px; color: var(--muted); }
+  .grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 18px; align-items: start; }
+
+  /* profile hero bar */
+  .hero-bar { display: flex; justify-content: space-between; align-items: center; gap: 24px; flex-wrap: wrap;
+    background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 22px 24px; }
+  .hb-left { display: flex; align-items: center; gap: 18px; min-width: 0; }
+  .hb-left .big-avatar { width: 66px; height: 66px; font-size: 26px; margin: 0; border-width: 0; flex-shrink: 0; }
+  .hb-latest { font-size: 13px; color: var(--muted); margin-top: 6px; }
+  .hb-latest b { color: var(--text); font-weight: 600; }
+  .hb-stats { display: flex; gap: 10px; flex-wrap: wrap; }
+  .hb-stat { background: var(--card2); border-radius: 12px; padding: 12px 22px; text-align: center; min-width: 104px; transition: transform .25s, background .25s; }
+  .hb-stat:hover { transform: translateY(-4px); background: #222e3b; }
+  .hb-stat .n { font-size: 22px; font-weight: 800; }
+  .hb-stat .l { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .9px; margin-top: 2px; }
+  .hb-stat.streak .n { color: var(--accent); display: flex; align-items: center; justify-content: center; gap: 5px; }
+  .flame-ico { font-size: 17px; }
+  .hb-note { font-size: 13px; color: var(--muted); margin-top: 10px; padding-left: 4px; }
+
+  /* feed filter bar */
+  .filter-bar { display: flex; justify-content: space-between; align-items: center; gap: 14px; flex-wrap: wrap; margin-bottom: 18px; }
+  .filter-bar .icon-tabs { border: 1px solid var(--border); border-radius: 11px; overflow: hidden; background: var(--card); min-width: 300px; flex: 1; max-width: 480px; }
+  .filter-selects { display: flex; gap: 9px; align-items: center; flex-wrap: wrap; }
+  .filter-selects select { width: auto; padding: 10px 13px; font-size: 13px; border-radius: 10px; background: var(--card); cursor: pointer; }
+  .filter-selects .bar-btn { padding: 10px 18px; }
+
+  .explainer { margin-top: 18px; }
+  .explainer h4 { font-size: 16px; font-weight: 700; margin-bottom: 10px; }
+  .explainer p { font-size: 14px; color: var(--muted); line-height: 1.75; max-width: 900px; }
+
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+  .card-pad { padding: 20px; }
+  .card-sec { padding: 16px 20px; border-top: 1px solid var(--border); }
+  .card-title { font-size: 12px; text-transform: uppercase; letter-spacing: 1.1px; color: var(--muted); margin-bottom: 10px; }
+
+  /* profile card with overlapping avatar.
+     overflow must stay visible or the card clips the avatar's top half. */
+  .profile-card { margin-top: 50px; overflow: visible; }
+  .profile-card .p-stats > div:first-child { border-bottom-left-radius: var(--radius); }
+  .profile-card > :last-child { border-bottom-left-radius: var(--radius); border-bottom-right-radius: var(--radius); }
+  .profile-top { padding: 0 20px 20px; text-align: center; }
+  .big-avatar { width: 88px; height: 88px; border-radius: 50%; background: linear-gradient(135deg, var(--accent), var(--purple)); border: 4px solid var(--bg); display: flex; align-items: center; justify-content: center; font-weight: 800; color: #fff; font-size: 34px; margin: -44px auto 12px; box-shadow: 0 8px 26px rgba(0,0,0,.4); }
+  .p-name { font-size: 20px; font-weight: 700; }
+  .p-mail { font-size: 12px; color: var(--muted); word-break: break-all; margin-top: 3px; }
+  .p-stats { display: grid; grid-template-columns: repeat(3, 1fr); border-top: 1px solid var(--border); }
+  .p-stats > div { padding: 14px 6px; text-align: center; border-right: 1px solid var(--border); }
+  .p-stats > div:last-child { border-right: none; }
+  .p-stats .l { font-size: 11px; color: var(--muted); }
+  .p-stats .n { font-size: 19px; font-weight: 800; margin-top: 2px; }
+  .latest-title { font-size: 15px; font-weight: 700; }
+  .latest-title span { color: var(--muted); font-weight: 400; }
+  .streak-block { display: flex; align-items: center; gap: 14px; }
+  .flame-ico { width: 17px; height: 17px; color: var(--accent); }
+  .flame { position: relative; width: 44px; flex-shrink: 0; text-align: center; }
+  .flame .fnum { font-size: 20px; font-weight: 800; color: var(--accent); line-height: 1; }
+  .flame .flbl { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .6px; }
+  .streak-block p { font-size: 13px; color: var(--muted); line-height: 1.5; }
+  .row-link { display: flex; justify-content: space-between; align-items: center; width: 100%; background: none; border: none; border-top: 1px solid var(--border); color: var(--text); font-size: 14px; padding: 16px 20px; cursor: pointer; transition: background .2s; }
+  .row-link:hover { background: var(--card2); }
+  .row-link .arw { color: var(--muted); transition: transform .2s; }
+  .row-link:hover .arw { transform: translateX(4px); color: var(--accent); }
+
+  /* sport icon tab strip */
+  .icon-tabs { display: grid; grid-template-columns: repeat(4, 1fr); border-bottom: 1px solid var(--border); }
+  .icon-tabs button { background: none; border: none; border-bottom: 3px solid transparent; padding: 12px 0 9px; cursor: pointer; color: var(--muted); transition: all .2s; }
+  .icon-tabs button .tab-ic { display: block; margin: 0 auto 4px; width: 20px; height: 20px; }
+  .icon-tabs button .lb { display: block; font-size: 10px; text-transform: uppercase; letter-spacing: .6px; }
+  .icon-tabs button:hover { background: var(--card2); color: var(--text); }
+  .icon-tabs button.on { color: var(--accent); border-bottom-color: var(--accent); background: rgba(255,107,53,.07); font-weight: 600; }
+  .effort-head { display: flex; align-items: center; gap: 8px; font-size: 11px; text-transform: uppercase; letter-spacing: 1.1px; color: var(--accent); font-weight: 700; }
+  .info-dot { width: 15px; height: 15px; color: var(--muted); cursor: help; transition: color .2s; }
+  .info-dot:hover { color: var(--accent2); }
+  .effort-num { font-size: 30px; font-weight: 800; margin: 12px 0 2px; }
+  .effort-sub { font-size: 13px; color: var(--muted); line-height: 1.6; }
+  .mini-bars { display: flex; align-items: flex-end; gap: 5px; height: 46px; margin-top: 14px; }
+  .mini-bars div { flex: 1; background: var(--card2); border-radius: 3px 3px 0 0; transition: background .2s; }
+  .mini-bars div.hot { background: var(--accent); }
+  .mini-bars div.cur { background: var(--accent2); }
+
+  /* center column */
+  /* Selects are width:100% globally, which collapses them inside a flex row -
+     these overrides give each one an explicit share of the width. */
+  .feed-head { display: flex; gap: 10px; align-items: center; margin-bottom: 18px; }
+  .feed-head select { width: auto; flex: 0 0 auto; padding: 11px 14px; font-size: 14px; border-radius: 10px; background: var(--card); cursor: pointer; }
+  .feed-head select.grow { flex: 1 1 auto; min-width: 160px; }
+  /* Two columns on wide screens so a handful of sessions still fills
+     the page instead of leaving a tall empty strip. */
+  .feed { display: grid; grid-template-columns: repeat(auto-fill, minmax(430px, 1fr)); gap: 18px; align-items: start; }
+  @media (max-width: 700px) { .feed { grid-template-columns: 1fr; } }
+
+  .acard { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); animation: slideIn .35s ease backwards; transition: border-color .25s, box-shadow .25s; }
+  @keyframes slideIn { from { opacity: 0; transform: translateY(14px); } }
+  .acard:hover { border-color: rgba(255,107,53,.5); box-shadow: 0 10px 30px rgba(0,0,0,.35); }
+  .ac-head { display: flex; align-items: center; gap: 12px; padding: 16px 18px 0; }
+  .ac-av { width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, var(--accent), var(--purple)); display: flex; align-items: center; justify-content: center; font-weight: 700; color: #fff; font-size: 15px; flex-shrink: 0; }
+  .ac-who { flex: 1; min-width: 0; }
+  .ac-who b { font-size: 14px; }
+  .ac-who span { display: block; font-size: 12px; color: var(--muted); margin-top: 1px; }
+  .ac-menu-btn { background: none; border: none; color: var(--muted); font-size: 14px; cursor: pointer; padding: 6px 9px; border-radius: 7px; transition: all .2s; }
+  .ac-menu-btn:hover { background: var(--card2); color: var(--text); }
+  .ac-body { display: flex; gap: 14px; padding: 14px 18px 0; }
+  .ac-sport { width: 34px; flex-shrink: 0; font-size: 24px; text-align: center; }
+  .ac-title { font-size: 21px; font-weight: 700; letter-spacing: -.3px; text-transform: capitalize; }
+  .ac-desc { font-size: 14px; color: var(--muted); line-height: 1.6; margin-top: 6px; }
+  .ac-stats { display: flex; padding: 16px 18px 18px 66px; }
+  .ac-stats > div { padding-right: 26px; margin-right: 26px; border-right: 1px solid var(--border); }
+  .ac-stats > div:last-child { border-right: none; margin-right: 0; padding-right: 0; }
+  .ac-stats .sl { font-size: 12px; color: var(--muted); }
+  .ac-stats .sv { font-size: 20px; font-weight: 700; margin-top: 2px; }
+  @media (max-width: 560px) { .ac-stats { padding-left: 18px; flex-wrap: wrap; gap: 14px 0; } .ac-stats > div { padding-right: 18px; margin-right: 18px; } }
+  .effort-strip { padding: 0 18px 16px 66px; }
+  .effort-track { height: 7px; background: var(--card2); border-radius: 4px; overflow: hidden; }
+  .effort-fill { height: 100%; border-radius: 4px; transition: width .8s cubic-bezier(.2,.8,.3,1); }
+  .effort-cap { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); margin-top: 6px; }
+  @media (max-width: 560px) { .effort-strip { padding-left: 18px; } }
+  .ac-foot { display: flex; justify-content: flex-end; gap: 8px; padding: 12px 18px; border-top: 1px solid var(--border); }
+  .ghost-icon { display: flex; align-items: center; gap: 7px; background: var(--card2); border: 1px solid transparent; color: var(--muted); font-size: 13px; padding: 8px 15px; border-radius: 9px; cursor: pointer; transition: all .2s; }
+  .ghost-icon:hover { color: var(--text); border-color: var(--border); transform: translateY(-2px); }
+  .ghost-icon.del:hover { color: var(--danger); border-color: rgba(231,76,60,.5); }
+  .empty { color: var(--muted); text-align: center; padding: 48px 20px; font-size: 14px; background: var(--card); border: 1px dashed var(--border); border-radius: var(--radius); }
+
+  /* right rail */
+  .side-card-head { display: flex; gap: 14px; align-items: flex-start; }
+  .side-ico { width: 44px; height: 44px; border-radius: 12px; background: rgba(255,107,53,.12); display: flex; align-items: center; justify-content: center; font-size: 21px; flex-shrink: 0; }
+  .side-ico.teal { background: rgba(78,205,196,.12); }
+  .side-ico.purple { background: rgba(167,139,250,.12); }
+  .side-card-head h3 { font-size: 17px; font-weight: 700; }
+  .side-card-head p { font-size: 13px; color: var(--muted); line-height: 1.6; margin-top: 5px; }
+  .side-link { display: block; width: 100%; background: none; border: none; color: var(--accent); font-size: 14px; font-weight: 600; text-align: left; padding: 14px 20px; border-top: 1px solid var(--border); cursor: pointer; transition: background .2s; }
+  .side-link:hover { background: var(--card2); }
+  .kv { display: flex; justify-content: space-between; align-items: center; padding: 11px 0; border-bottom: 1px solid var(--border); font-size: 13px; color: var(--muted); }
+  .kv:last-child { border-bottom: none; }
+  .kv b { color: var(--text); font-size: 15px; }
+  .kv b.teal { color: var(--accent2); }
+  .range-row { display: flex; gap: 5px; }
+  .range-row button { background: none; border: 1px solid var(--border); color: var(--muted); font-size: 11px; padding: 4px 9px; border-radius: 6px; cursor: pointer; transition: all .2s; }
+  .range-row button.on { background: var(--accent2); border-color: var(--accent2); color: #04241f; font-weight: 700; }
+  /* Fixed-height wrapper: without it a maintainAspectRatio:false chart
+     resizes its own container on every frame and grows forever. */
+  .chart-box { position: relative; height: 190px; width: 100%; }
+  .chart-box.wide { height: 260px; }
+  .cal-grid { display: grid; grid-template-columns: repeat(13, 1fr); gap: 3px; }
+  .cal-grid i { aspect-ratio: 1; border-radius: 3px; background: var(--card2); transition: transform .15s; }
+  .cal-grid i:hover { transform: scale(1.55); }
+  .cal-legend { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); margin-top: 10px; }
+  .ring { position: relative; width: 92px; height: 92px; flex-shrink: 0; }
+  .ring svg { transform: rotate(-90deg); }
+  .ring .rtxt { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+  .ring .rtxt b { font-size: 17px; font-weight: 800; }
+  .ring .rtxt span { font-size: 10px; color: var(--muted); }
+  .goal-row { margin-bottom: 14px; }
+  .goal-row:last-child { margin-bottom: 0; }
+  .goal-row .gtop { display: flex; justify-content: space-between; align-items: baseline; font-size: 13px; margin-bottom: 6px; }
+  .goal-row .gname { color: var(--text); text-transform: capitalize; }
+  .goal-row .gname i { font-style: normal; margin-right: 6px; }
+  .goal-row .gval { color: var(--muted); font-size: 12px; }
+  .goal-row .gval b { color: var(--text); }
+  .gbar { height: 7px; background: var(--card2); border-radius: 4px; overflow: hidden; }
+  .gfill { height: 100%; border-radius: 4px; width: 0; transition: width 1s cubic-bezier(.2,.8,.3,1); }
+  .goal-empty { font-size: 13px; color: var(--muted); line-height: 1.6; }
+  .goal-modal-row { display: flex; align-items: center; gap: 10px; margin-top: 12px; }
+  .goal-modal-row .gm-ico { width: 40px; height: 40px; border-radius: 10px; background: var(--card2); display: flex; align-items: center; justify-content: center; font-size: 19px; flex-shrink: 0; color: var(--muted); }
+  .goal-modal-row .gm-name { flex: 1; font-size: 14px; min-width: 0; }
+  .goal-modal-row .gm-unit { font-size: 12px; color: var(--muted); width: 20px; flex-shrink: 0; }
+
+  /* Custom number stepper: native spinners are tiny, only appear on hover
+     and can't be themed, so they're hidden and replaced with chevrons. */
+  input[type=number] { -moz-appearance: textfield; }
+  input[type=number]::-webkit-outer-spin-button,
+  input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  .numwrap { position: relative; display: inline-flex; align-items: center; flex-shrink: 0; }
+  .numwrap input { width: 100%; padding-right: 30px !important; text-align: center; font-variant-numeric: tabular-nums; }
+  .numsteps { position: absolute; right: 5px; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 2px; }
+  .numsteps button { background: none; border: none; color: var(--muted); padding: 0; width: 20px; height: 14px;
+    display: flex; align-items: center; justify-content: center; cursor: pointer; border-radius: 4px; transition: color .15s, background .15s, transform .1s; }
+  .numsteps button:hover { color: var(--accent); background: rgba(255,107,53,.16); }
+  .numsteps button:active { transform: scale(.85); }
+  .numsteps .ic { width: 13px; height: 13px; stroke-width: 2.6; }
+  .numwrap.w-full { width: 100%; }
+  .numwrap.w-goal { width: 96px; }
+  .numwrap.w-time { width: 74px; }
+
+  /* dashboard bottom */
+  .dash-bottom { max-width: 1240px; margin: 44px auto 0; padding: 34px 3vw; border-top: 1px solid var(--border); display: grid; grid-template-columns: 1fr 1fr; gap: 40px; }
+  @media (max-width: 820px) { .dash-bottom { grid-template-columns: 1fr; gap: 28px; } }
+  .dash-bottom h4 { font-size: 17px; font-weight: 700; margin-bottom: 14px; }
+  .mini-list div { display: flex; justify-content: space-between; font-size: 13px; color: var(--muted); padding: 9px 0; border-bottom: 1px solid var(--border); }
+  .dash-bottom p { font-size: 14px; color: var(--muted); line-height: 1.7; }
+
+  /* modal */
+  .overlay { position: fixed; inset: 0; background: rgba(5,8,11,.78); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; padding: 20px; z-index: 90; animation: fade .2s ease; }
+  @keyframes fade { from { opacity: 0; } }
+  .modal { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 26px; width: 100%; max-width: 480px; max-height: 88vh; overflow-y: auto; overscroll-behavior: contain; animation: pop .28s cubic-bezier(.2,.9,.3,1.2); }
+  /* Slightly slimmer inside the modal, and it fades in only when needed. */
+  .modal::-webkit-scrollbar { width: 9px; }
+  .modal::-webkit-scrollbar-thumb { background: #3a4a5e; border-width: 2px; }
+  .modal-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+  .modal-head h3 { font-size: 19px; font-weight: 800; }
+  .modal-head button { background: none; border: none; color: var(--muted); font-size: 22px; cursor: pointer; line-height: 1; }
+  .modal-head button:hover { color: var(--text); }
+  .modal .sub { color: var(--muted); font-size: 13px; margin-bottom: 6px; }
+  .mgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .cat-pick { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 10px; }
+  .cat-pick button { padding: 11px 4px; background: var(--card2); border: 1px solid var(--border); border-radius: 10px; color: var(--muted); font-size: 12px; cursor: pointer; transition: all .2s; }
+  .cat-pick button .ci { display: block; font-size: 17px; margin-bottom: 3px; }
+  .cat-pick button.on { border-color: var(--accent); background: rgba(255,107,53,.14); color: var(--accent); font-weight: 600; }
+  /* No inner max-height: nested scrollbars are horrible to use, so the
+     modal itself is the only thing that scrolls. */
+  .sport-pick { display: grid; grid-template-columns: repeat(4, 1fr); gap: 7px; margin-top: 10px; }
+  .sport-pick button { padding: 10px 3px; background: transparent; border: 1px solid var(--border); border-radius: 9px; color: var(--muted); font-size: 11px; cursor: pointer; transition: all .2s; }
+  .sport-pick button .ti { display: block; font-size: 17px; margin-bottom: 3px; }
+  .sport-pick button:hover { border-color: var(--muted); color: var(--text); }
+  .sport-pick button.on { border-color: var(--accent2); background: rgba(78,205,196,.12); color: var(--accent2); font-weight: 600; }
+  .goal-group { font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: var(--accent); font-weight: 700; margin: 20px 0 4px; display: flex; justify-content: space-between; align-items: baseline; }
+  .goal-group span { text-transform: none; letter-spacing: 0; color: var(--muted); font-weight: 400; font-size: 11px; }
+
+  /* training status card */
+  .st-top { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
+  .st-top .stv { font-size: 27px; font-weight: 800; }
+  .st-pill { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .8px; padding: 4px 11px; border-radius: 20px; }
+  .st-scale { position: relative; height: 8px; border-radius: 5px; margin: 6px 0 4px;
+    background: linear-gradient(90deg, #378add 0 22%, #4ecdc4 22% 46%, #ef9f27 46% 62%, #e24b4a 62% 100%); }
+  .st-marker { position: absolute; top: -4px; width: 4px; height: 16px; border-radius: 3px; background: var(--text); box-shadow: 0 0 0 2px var(--card); transition: left .8s cubic-bezier(.2,.8,.3,1); }
+  .st-ticks { display: flex; justify-content: space-between; font-size: 10px; color: var(--muted); }
+  .st-note { font-size: 12px; color: var(--muted); line-height: 1.6; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
+  .st-spark { display: flex; align-items: flex-end; gap: 2px; height: 34px; margin-top: 12px; }
+  .st-spark div { flex: 1; background: var(--card2); border-radius: 2px 2px 0 0; min-height: 2px; }
+  .st-spark div.on { background: var(--accent); }
+
+  /* RPE suggestion in the log modal */
+  .rpe-suggest { display: flex; align-items: center; gap: 10px; background: rgba(78,205,196,.1); border: 1px solid rgba(78,205,196,.35); border-radius: 9px; padding: 9px 12px; margin-top: 10px; font-size: 12px; color: var(--muted); animation: pop .25s ease; }
+  .rpe-suggest b { color: var(--accent2); }
+  .rpe-suggest button { margin-left: auto; background: var(--accent2); border: none; color: #04241f; font-size: 12px; font-weight: 700; padding: 6px 13px; border-radius: 7px; cursor: pointer; flex-shrink: 0; }
+  .rpe-suggest button:hover { filter: brightness(1.1); }
+  .rpe-suggest .ic { width: 17px; height: 17px; color: var(--accent2); flex-shrink: 0; }
+  .rpe-suggest small { color: var(--muted); font-size: 11px; }
+  .rpe-suggest.hint { background: rgba(139,152,165,.08); border-color: var(--border); }
+  .rpe-suggest.hint .ic { color: var(--muted); }
+  .rpe-suggest.hint button { background: var(--card2); color: var(--text); }
+  .opt { font-size: 11px; color: var(--muted); font-weight: 400; text-transform: none; letter-spacing: 0; }
+  .hr-explain { display: flex; gap: 10px; align-items: flex-start; background: var(--card2); border-radius: 10px; padding: 12px 14px; margin-top: 18px; font-size: 12px; color: var(--muted); line-height: 1.6; }
+  .hr-explain .ic { width: 18px; height: 18px; color: var(--accent); flex-shrink: 0; margin-top: 1px; }
+  .hr-explain b { color: var(--text); }
+  .hr-badge { display: inline-flex; align-items: center; gap: 4px; color: var(--danger); font-size: 12px; }
+  .hr-badge .ic { width: 13px; height: 13px; }
+  .rpe-row { display: grid; grid-template-columns: repeat(10, 1fr); gap: 4px; margin-top: 6px; }
+  .rpe-row button { aspect-ratio: 1; background: var(--card2); border: 1px solid var(--border); border-radius: 8px; color: var(--muted); font-size: 13px; cursor: pointer; transition: all .2s; }
+  .rpe-row button:hover { border-color: var(--accent); }
+  .rpe-row button.on { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 700; }
+  .rpe-hint { font-size: 12px; color: var(--muted); margin-top: 8px; min-height: 16px; }
+  .modal .btn { width: 100%; margin-top: 20px; }
+  .modal-actions { display: flex; gap: 10px; margin-top: 20px; }
+  .modal-actions button { flex: 1; }
+  .sheet { position: fixed; background: var(--card); border: 1px solid var(--border); border-radius: 11px; padding: 5px; min-width: 150px; box-shadow: 0 14px 40px rgba(0,0,0,.55); z-index: 80; animation: pop .16s ease; }
+  .sheet button { display: block; width: 100%; text-align: left; background: none; border: none; color: var(--muted); font-size: 13px; padding: 9px 13px; border-radius: 7px; cursor: pointer; }
+  .sheet button:hover { background: var(--card2); color: var(--text); }
+  .sheet button.danger:hover { color: var(--danger); }
+
+  .toasts { position: fixed; bottom: 22px; right: 22px; display: flex; flex-direction: column; gap: 10px; z-index: 120; }
+  .toast { background: var(--card); border: 1px solid var(--border); border-left: 3px solid var(--accent2); border-radius: 10px; padding: 13px 18px; font-size: 14px; box-shadow: 0 14px 40px rgba(0,0,0,.5); animation: toastIn .3s cubic-bezier(.2,.9,.3,1.2); }
+  .toast.err { border-left-color: var(--danger); }
+  @keyframes toastIn { from { opacity: 0; transform: translateX(40px); } }
+
+  .danger-btn { padding: 11px 24px; background: transparent; color: var(--danger); border: 1px solid var(--danger); border-radius: 9px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all .2s; }
+  .danger-btn:hover { background: var(--danger); color: #fff; }
+  .deletion-banner { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; background: rgba(231,76,60,.12); border: 1px solid rgba(231,76,60,.45); border-radius: 10px; padding: 14px 16px; font-size: 13px; margin-bottom: 20px; animation: pulse-border 2s ease-in-out infinite; }
+  @keyframes pulse-border { 50% { border-color: rgba(231,76,60,.9); } }
+  .deletion-banner b { color: var(--danger); }
+
+  /* ================= MOTION LAYER ================= */
+  /* Everything below animates transform/opacity only, so it stays
+     on the GPU and never triggers layout reflow. */
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+  }
+
+  /* scroll progress bar */
+  .scroll-bar { position: fixed; top: 0; left: 0; height: 3px; width: 0; background: linear-gradient(90deg, var(--accent), var(--accent2), var(--purple)); z-index: 100; transition: width .08s linear; }
+
+  /* drifting dot grid behind everything */
+  .grid-bg { position: fixed; inset: -50% -50% 0 -50%; z-index: 0; pointer-events: none; opacity: .45;
+    background-image: radial-gradient(rgba(139,152,165,.14) 1px, transparent 1px); background-size: 42px 42px;
+    animation: gridDrift 34s linear infinite; }
+  @keyframes gridDrift { to { transform: translate(42px, 42px); } }
+
+  /* staggered entrance */
+  @keyframes rise { from { opacity: 0; transform: translateY(26px); } }
+  .rise { animation: rise .85s cubic-bezier(.2,.85,.3,1) backwards; }
+
+  /* light sweep across tiles on hover */
+  .mcard, .step, .persona, .fvis, .acard, .frow .fvis { position: relative; overflow: hidden; }
+  .mcard::after, .step::after, .persona::after, .fvis::after, .acard::after {
+    content: ""; position: absolute; inset: 0; pointer-events: none;
+    background: linear-gradient(115deg, transparent 42%, rgba(255,255,255,.07) 50%, transparent 58%);
+    transform: translateX(-110%); transition: transform .75s cubic-bezier(.2,.8,.3,1);
+  }
+  .mcard:hover::after, .step:hover::after, .persona:hover::after, .fvis:hover::after, .acard:hover::after { transform: translateX(110%); }
+
+  /* gently bobbing tile icons */
+  @keyframes bob { 50% { transform: translateY(-7px); } }
+  .mcard .mi, .side-ico, .tile .icon { animation: bob 3.4s ease-in-out infinite; }
+  .mcard:nth-child(2) .mi { animation-delay: .4s; }
+  .mcard:nth-child(3) .mi { animation-delay: .8s; }
+
+  /* nav link underline grows from the left */
+  .nav-links a { position: relative; }
+  .nav-links a::after { content: ""; position: absolute; left: 0; bottom: -6px; height: 2px; width: 0; background: var(--accent); transition: width .3s cubic-bezier(.2,.8,.3,1); }
+  .nav-links a:hover::after { width: 100%; }
+
+  /* button shine */
+  .btn { position: relative; overflow: hidden; }
+  .btn::after { content: ""; position: absolute; inset: 0; background: linear-gradient(115deg, transparent 40%, rgba(255,255,255,.28) 50%, transparent 60%); transform: translateX(-110%); transition: transform .6s; }
+  .btn:hover::after { transform: translateX(110%); }
+
+  /* second marquee row, travelling the other way */
+  .marquee.rev { border-top: none; }
+  .marquee.rev .marquee-track { animation-direction: reverse; animation-duration: 38s; }
+  .chip { transition: transform .25s, border-color .25s, color .25s; }
+  .chip:hover { transform: translateY(-4px) scale(1.04); border-color: var(--accent); color: var(--text); }
+
+  /* heat cells ripple in a wave */
+  @keyframes cellPulse { 0%, 100% { opacity: .55; } 50% { opacity: 1; } }
+  .load-grid div { animation: cellPulse 4s ease-in-out infinite; }
+
+  /* hero mock bars breathe after their entrance */
+  @keyframes breathe { 50% { transform: scaleY(.86); } }
+  .mock-bars div { transform-origin: bottom; animation: grow 1.4s cubic-bezier(.2,.8,.3,1) backwards, breathe 3.6s ease-in-out infinite 1.4s; }
+
+  /* section headings sweep their gradient once in view */
+  .kicker { display: inline-block; }
+  .reveal.visible .kicker { animation: rise .7s cubic-bezier(.2,.85,.3,1) backwards; }
+
+  /* ---------- dashboard motion ---------- */
+  .sec { animation: rise .7s cubic-bezier(.2,.85,.3,1) backwards; }
+  .sec:nth-of-type(2) { animation-delay: .08s; }
+  .sec:nth-of-type(3) { animation-delay: .16s; }
+  .sec:nth-of-type(4) { animation-delay: .24s; }
+  .grid-3 > * { animation: rise .6s cubic-bezier(.2,.85,.3,1) backwards; }
+  .grid-3 > *:nth-child(2) { animation-delay: .07s; }
+  .grid-3 > *:nth-child(3) { animation-delay: .14s; }
+
+  .card { transition: border-color .3s, box-shadow .3s, transform .3s; }
+  .grid-3 .card:hover, .hero-bar:hover { border-color: rgba(255,107,53,.4); box-shadow: 0 12px 34px rgba(0,0,0,.4); }
+  .grid-3 .card:hover { transform: translateY(-3px); }
+  .hero-bar { transition: border-color .3s, box-shadow .3s; }
+
+  /* avatar keeps a soft pulsing halo */
+  @keyframes halo { 0% { box-shadow: 0 0 0 0 rgba(255,107,53,.45); } 70% { box-shadow: 0 0 0 12px rgba(255,107,53,0); } 100% { box-shadow: 0 0 0 0 rgba(255,107,53,0); } }
+  .big-avatar { animation: halo 2.8s ease-out infinite; }
+
+  /* streak flame flickers */
+  @keyframes flicker { 0%, 100% { transform: scale(1) rotate(-2deg); } 50% { transform: scale(1.13) rotate(2deg); } }
+  .flame > div:first-child { display: inline-block; animation: flicker 1.9s ease-in-out infinite; }
+
+  /* sparkline + calendar cells build in */
+  @keyframes growUp { from { height: 0 !important; } }
+  .mini-bars div { animation: growUp .7s cubic-bezier(.2,.8,.3,1) backwards; }
+  @keyframes popIn { from { opacity: 0; transform: scale(.3); } }
+  .cal-grid i { animation: popIn .4s cubic-bezier(.2,.9,.3,1.3) backwards; }
+
+  /* sport tab bounces when selected */
+  @keyframes tabPop { 50% { transform: translateY(-5px) scale(1.18); } }
+  .icon-tabs button.on .ic { animation: tabPop .45s cubic-bezier(.2,.9,.3,1.4); }
+
+  /* stat rows brighten on hover */
+  .p-stats > div { transition: background .25s; }
+  .p-stats > div:hover { background: var(--card2); }
+  .kv { transition: padding-left .25s, color .25s; }
+  .kv:hover { padding-left: 6px; color: var(--text); }
+
+  /* feed cards lift, and their action buttons slide up */
+  .acard { transition: transform .28s cubic-bezier(.2,.8,.3,1), border-color .28s, box-shadow .28s; }
+  .acard:hover { transform: translateY(-5px); }
+  .ac-sport { transition: transform .35s cubic-bezier(.2,.9,.3,1.4); }
+  .acard:hover .ac-sport { transform: scale(1.25) rotate(-8deg); }
+  .ac-stats .sv { transition: color .25s; }
+  .acard:hover .ac-stats > div:first-child .sv { color: var(--accent); }
+  .ghost-icon { transition: transform .25s, background .25s, color .25s, border-color .25s; }
+
+  /* live dot next to "this week" */
+  @keyframes blip { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: .35; transform: scale(.8); } }
+  .live-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--accent2); margin-left: 8px; animation: blip 1.6s ease-in-out infinite; }
+</style>
+</head>
+<body>
+
+<!-- ================= ICON SPRITE =================
+     One inline sprite; each glyph is referenced by its symbol id.
+     Self-contained (no icon CDN to fail), stroke-based so every glyph
+     inherits its colour and size from the surrounding text. -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <!-- interface -->
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+    <symbol id="i-chevron-down" viewBox="0 0 24 24"><path d="M6 9.5l6 6 6-6"/></symbol>
+    <symbol id="i-chevron-up" viewBox="0 0 24 24"><path d="M6 14.5l6-6 6 6"/></symbol>
+    <symbol id="i-chevron-right" viewBox="0 0 24 24"><path d="M9.5 6l6 6-6 6"/></symbol>
+    <symbol id="i-arrow-left" viewBox="0 0 24 24"><path d="M19 12H5M11 18l-6-6 6-6"/></symbol>
+    <symbol id="i-pencil" viewBox="0 0 24 24"><path d="M4 20h4L18.5 9.5a2.12 2.12 0 0 0-3-3L5 17v3z"/><path d="M13.5 6.5l3 3"/></symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6"/><path d="M5.5 7l1 12a2 2 0 0 0 2 1.9h7a2 2 0 0 0 2-1.9l1-12"/><path d="M9 7V4.5h6V7"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l5 5L19 7"/></symbol>
+    <symbol id="i-dots" viewBox="0 0 24 24"><circle cx="12" cy="5" r="1.6" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none"/><circle cx="12" cy="19" r="1.6" fill="currentColor" stroke="none"/></symbol>
+    <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></symbol>
+    <symbol id="i-logout" viewBox="0 0 24 24"><path d="M10 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"/><path d="M16 17l5-5-5-5M21 12H9"/></symbol>
+    <symbol id="i-book" viewBox="0 0 24 24"><path d="M4 4.5A1.5 1.5 0 0 1 5.5 3H19v18H5.5A1.5 1.5 0 0 1 4 19.5v-15z"/><path d="M8 7h7M8 11h7"/></symbol>
+    <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></symbol>
+    <symbol id="i-flame" viewBox="0 0 24 24"><path d="M12 2.5c3.2 4 5 6.4 5 9.5a5 5 0 0 1-10 0c0-1.2.5-2.3 1.6-3.2.5 1.2 1.5 1.7 2 1.2.6-1.1-.7-4.3 1.4-7.5z"/></symbol>
+    <symbol id="i-target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"/></symbol>
+    <symbol id="i-trophy" viewBox="0 0 24 24"><path d="M8 4h8v5a4 4 0 0 1-8 0V4z"/><path d="M8 5.5H5.5v1.5a3 3 0 0 0 3 3M16 5.5h2.5v1.5a3 3 0 0 1-3 3"/><path d="M12 13v3M9 20h6l-.8-3.5h-4.4L9 20z"/></symbol>
+    <symbol id="i-calendar" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="16" rx="2.5"/><path d="M8 3v4M16 3v4M3.5 10.5h17"/></symbol>
+    <symbol id="i-chart" viewBox="0 0 24 24"><path d="M4 20h17"/><path d="M6.5 20v-6M12 20V5.5M17.5 20v-9"/></symbol>
+    <symbol id="i-gauge" viewBox="0 0 24 24"><path d="M3.5 18a9 9 0 1 1 17 0"/><path d="M12 14l4.5-4.5"/><circle cx="12" cy="14" r="1.4" fill="currentColor" stroke="none"/></symbol>
+    <symbol id="i-clipboard" viewBox="0 0 24 24"><rect x="4.5" y="4.5" width="15" height="16.5" rx="2.5"/><path d="M9 4.5V3.5h6v1"/><path d="M8.5 11h7M8.5 15h4.5"/></symbol>
+    <symbol id="i-lock" viewBox="0 0 24 24"><rect x="4.5" y="10.5" width="15" height="10.5" rx="2.5"/><path d="M8 10.5V7a4 4 0 0 1 8 0v3.5"/></symbol>
+    <symbol id="i-mail" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="M3.5 7l8.5 6 8.5-6"/></symbol>
+    <symbol id="i-ticket" viewBox="0 0 24 24"><path d="M15 5v2M15 11v2M15 17v2"/><path d="M5 5h14a2 2 0 0 1 2 2v2a3 3 0 0 0 0 6v2a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-2a3 3 0 0 0 0-6V7a2 2 0 0 1 2-2z"/></symbol>
+    <symbol id="i-ruler" viewBox="0 0 24 24"><rect x="2.5" y="8" width="19" height="8" rx="2"/><path d="M7 8v3M11 8v4M15 8v3M19 8v4"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5.5l3.5 2"/></symbol>
+    <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1.5 1.5"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3A4 4 0 0 0 11 18.7l1.5-1.5"/></symbol>
+    <symbol id="i-medal" viewBox="0 0 24 24"><circle cx="12" cy="15" r="5.5"/><path d="M8.5 10L5.5 3M15.5 10l3-7M10 3h4"/></symbol>
+    <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3l7.5 3v6c0 4.5-3.2 8-7.5 9.5C7.7 20 4.5 16.5 4.5 12V6L12 3z"/><path d="M9.5 12l1.8 1.8 3.5-3.5"/></symbol>
+    <symbol id="i-sparkle" viewBox="0 0 24 24"><path d="M12 3l2.1 6.3L20.5 12l-6.4 2.7L12 21l-2.1-6.3L3.5 12l6.4-2.7L12 3z"/></symbol>
+    <symbol id="i-trend" viewBox="0 0 24 24"><path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/></symbol>
+    <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 11a8 8 0 0 0-14-4.5L4 9"/><path d="M4 13a8 8 0 0 0 14 4.5L20 15"/><path d="M4 5v4h4M20 19v-4h-4"/></symbol>
+
+    <!-- distance sports -->
+    <symbol id="i-run" viewBox="0 0 24 24"><circle cx="14.5" cy="4.5" r="2.2"/><path d="M13.5 21.5l1.5-6.5-4-3 1.5-5.5"/><path d="M7 20.5l3.6-5.4"/><path d="M12.5 7.5L8 9.2"/><path d="M15 12l4.5 1.8"/></symbol>
+    <symbol id="i-bike" viewBox="0 0 24 24"><circle cx="5.5" cy="17" r="3.6"/><circle cx="18.5" cy="17" r="3.6"/><path d="M12 17V13l-3-3 3.5-2.5L15.5 10H18"/><circle cx="16.5" cy="4.5" r="1.6"/></symbol>
+    <symbol id="i-swim" viewBox="0 0 24 24"><circle cx="16.5" cy="6" r="2.1"/><path d="M3.5 13.5l3-2 3 2 3-2 3 2 3-2"/><path d="M3.5 18.5l3-2 3 2 3-2 3 2 3-2"/><path d="M5 10.5l5-2.5 4 2.5"/></symbol>
+    <symbol id="i-row" viewBox="0 0 24 24"><path d="M3.5 19.5l3-2 3 2 3-2 3 2 3-2"/><path d="M4 15l5.5-8 8.5 2.5"/><circle cx="9" cy="5.5" r="2"/></symbol>
+    <symbol id="i-hike" viewBox="0 0 24 24"><path d="M2.5 19.5h19L14 6l-3.6 6.2-2.2-3L2.5 19.5z"/><circle cx="17.5" cy="5.5" r="2"/></symbol>
+    <symbol id="i-walk" viewBox="0 0 24 24"><ellipse cx="8" cy="8" rx="2.6" ry="4.2"/><ellipse cx="15.5" cy="15.5" rx="2.6" ry="4.2"/></symbol>
+
+    <!-- strength -->
+    <symbol id="i-barbell" viewBox="0 0 24 24"><path d="M2.5 12h19"/><path d="M6 8.5v7M9 6v12M15 6v12M18 8.5v7"/></symbol>
+    <symbol id="i-kettlebell" viewBox="0 0 24 24"><path d="M9 8.5a3 3 0 0 1 6 0"/><path d="M12 8.5c3.6 0 6.5 3.2 6.5 7.2 0 2.5-.6 4.3-2 4.3H7.5c-1.4 0-2-1.8-2-4.3 0-4 2.9-7.2 6.5-7.2z"/></symbol>
+    <symbol id="i-bar" viewBox="0 0 24 24"><path d="M3.5 4.5h17M8 4.5v3.5M16 4.5v3.5"/><circle cx="12" cy="12.5" r="2.4"/><path d="M8 8l4 2.5 4-2.5M12 15v6"/></symbol>
+    <symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13.5 2.5L5 13.5h6l-1.5 8 8.5-11h-6l1.5-8z"/></symbol>
+
+    <!-- sports -->
+    <symbol id="i-football" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7.2l4.5 3.3-1.7 5.4h-5.6L7.5 10.5 12 7.2z"/><path d="M12 3v4.2M20.6 10.2l-4.1.3M17.5 19.3l-2.7-3.4M6.5 19.3l2.7-3.4M3.4 10.2l4.1.3"/></symbol>
+    <symbol id="i-basketball" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 3v18"/><path d="M4.6 7c2.9 2 2.9 8 0 10M19.4 7c-2.9 2-2.9 8 0 10"/></symbol>
+    <symbol id="i-cricket" viewBox="0 0 24 24"><path d="M7 7.5v12M11 7.5v12M15 7.5v12"/><path d="M6 7h10"/><circle cx="20" cy="17" r="2.2"/></symbol>
+    <symbol id="i-tennis" viewBox="0 0 24 24"><circle cx="9.5" cy="9.5" r="6.5"/><path d="M14.2 14.2L20 20"/><path d="M4.5 9.5h10M9.5 4.5v10"/></symbol>
+    <symbol id="i-badminton" viewBox="0 0 24 24"><circle cx="17" cy="7" r="3"/><path d="M14.9 9.1L5.5 18.5l-2 2"/><path d="M9.5 13l2 2M12 10.5l2 2"/></symbol>
+    <symbol id="i-pingpong" viewBox="0 0 24 24"><circle cx="11" cy="9" r="6"/><path d="M11 15v6M9 21h4"/><circle cx="19.5" cy="16.5" r="1.8"/></symbol>
+    <symbol id="i-volleyball" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 3c-3.2 5-3.2 13 0 18"/><path d="M3.6 8.6c5.2 1 12 5 15 9.2M20.4 8.6c-5.2 1-12 5-15 9.2"/></symbol>
+    <symbol id="i-hockey" viewBox="0 0 24 24"><path d="M4 4l9.5 12H19"/><ellipse cx="20" cy="18.5" rx="2.6" ry="1.6"/></symbol>
+    <symbol id="i-rugby" viewBox="0 0 24 24"><ellipse cx="12" cy="12" rx="9.2" ry="6" transform="rotate(-35 12 12)"/><path d="M9 15l6-6"/><path d="M10 13l1.4 1.4M13 10l1.4 1.4"/></symbol>
+    <symbol id="i-baseball" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M6.2 5.4c2.2 3 2.2 10.2 0 13.2M17.8 5.4c-2.2 3-2.2 10.2 0 13.2"/></symbol>
+    <symbol id="i-golf" viewBox="0 0 24 24"><path d="M7.5 21V3l9.5 3.8-9.5 3.8"/><ellipse cx="12" cy="20" rx="7" ry="2"/></symbol>
+    <symbol id="i-boxing" viewBox="0 0 24 24"><path d="M6.5 8.5a4.5 4.5 0 0 1 9 0V11h1.2a2.3 2.3 0 0 1 2.3 2.3V16a4.5 4.5 0 0 1-4.5 4.5h-3.5A4.5 4.5 0 0 1 6.5 16V8.5z"/><path d="M6.5 12.5h9"/></symbol>
+    <symbol id="i-martialarts" viewBox="0 0 24 24"><path d="M2.5 9.5h19v4h-19z"/><path d="M9 13.5l-2 7.5 5-4 5 4-2-7.5"/></symbol>
+    <symbol id="i-climb" viewBox="0 0 24 24"><path d="M2.5 20.5h19L13.5 6.5l-4 6.8-2.2-3-4.8 10.2z"/><path d="M13.5 6.5v-4l4.5 1.6-4.5 1.7"/></symbol>
+    <symbol id="i-snow" viewBox="0 0 24 24"><path d="M12 2.5v19M3.7 7.2l16.6 9.6M20.3 7.2L3.7 16.8"/><path d="M9 4.5l3 2 3-2M9 19.5l3-2 3 2"/></symbol>
+
+    <!-- other -->
+    <symbol id="i-yoga" viewBox="0 0 24 24"><circle cx="12" cy="5" r="2.4"/><path d="M12 9.5v4.5"/><path d="M5.5 20.5c.9-4 3.3-6.2 6.5-6.2s5.6 2.2 6.5 6.2z"/><path d="M5 16.5h14"/></symbol>
+    <symbol id="i-ring" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4"/></symbol>
+    <symbol id="i-heart" viewBox="0 0 24 24"><path d="M12 20.5l-7.4-7.3a4.7 4.7 0 0 1 6.6-6.7l.8.8.8-.8a4.7 4.7 0 0 1 6.6 6.7L12 20.5z"/></symbol>
+    <symbol id="i-pulse" viewBox="0 0 24 24"><path d="M3 12h4l2.5-6 4 12 2.5-6H21"/></symbol>
+  </defs>
+</svg>
+
+<div class="scroll-bar" id="scroll-bar"></div>
+<div class="grid-bg"></div>
+<div class="orb orb1"></div><div class="orb orb2"></div>
+
+<!-- ================= LANDING ================= -->
+<div id="landing-view">
+  <nav>
+    <div class="logo">Endurance<span>Hub</span></div>
+    <div class="nav-links">
+      <a href="#features">Features</a>
+      <a href="#metrics">Metrics</a>
+      <a href="#how">How it works</a>
+      <a href="#who">Who it's for</a>
+      <a href="#faq">FAQ</a>
+    </div>
+    <div class="nav-actions">
+      <button class="btn-ghost" onclick="openAuth('login')">Log in</button>
+      <button class="btn" onclick="openAuth('register')">Get started</button>
+    </div>
+  </nav>
+
+  <section class="hero">
+    <div class="hero-copy">
+      <div class="eyebrow rise" style="animation-delay:.05s">Free forever · No ads · Your data stays yours</div>
+      <h1 class="rise" style="animation-delay:.15s">Training analytics that <span class="grad-text">explain your training</span></h1>
+      <p class="lead rise" style="animation-delay:.3s">Most apps tell you how far you went. EnduranceHub tells you what it cost you — weekly training load, pace trends, records and streaks, computed from every session you log.</p>
+      <div class="hero-cta rise" style="animation-delay:.42s">
+        <button class="btn" onclick="openAuth('register')">Create your account</button>
+        <button class="btn-ghost" onclick="document.getElementById('features').scrollIntoView()">See how it works</button>
+      </div>
+      <div class="hero-note rise" style="animation-delay:.54s">Takes about 30 seconds. Email verification, then straight to your dashboard.</div>
+    </div>
+    <div class="hero-visual">
+      <div class="float-pill fp1"><svg class="ic"><use href="#i-trend"/></svg> Load +12% this week</div>
+      <div class="float-pill fp2"><svg class="ic"><use href="#i-trophy"/></svg> New 10K best</div>
+      <div class="mock">
+        <div class="mock-head"><span>This week</span><span>Mon – Sun</span></div>
+        <div class="mock-row">
+          <div class="mock-stat"><div class="v" style="color:var(--accent)">42.6</div><div class="l">km</div></div>
+          <div class="mock-stat"><div class="v" style="color:var(--accent2)">5:12</div><div class="l">avg pace</div></div>
+          <div class="mock-stat"><div class="v">1,240</div><div class="l">load</div></div>
+        </div>
+        <div class="mock-bars" id="mock-bars"></div>
+      </div>
+    </div>
+  </section>
+
+  <div class="trust">
+    <div class="trust-inner">
+      <div class="tstat"><div class="num" data-count="16">0</div><div class="lbl">API endpoints</div></div>
+      <div class="tstat"><div class="num" data-count="4">0</div><div class="lbl">Analytics engines</div></div>
+      <div class="tstat"><div class="num" data-count="3">0</div><div class="lbl">Sport types</div></div>
+      <div class="tstat"><div class="num" data-count="100">0</div><div class="lbl">% your data</div></div>
+    </div>
+  </div>
+
+  <div class="marquee"><div class="marquee-track" id="marquee-track">
+    <div class="chip"><svg class="ic"><use href="#i-run"/></svg> Weekly mileage <b>auto-computed</b></div>
+    <div class="chip"><svg class="ic"><use href="#i-flame"/></svg> Training load <b>session-RPE</b></div>
+    <div class="chip"><svg class="ic"><use href="#i-trophy"/></svg> Personal records <b>tracked live</b></div>
+    <div class="chip"><svg class="ic"><use href="#i-bolt"/></svg> Streaks <b>day by day</b></div>
+    <div class="chip"><svg class="ic"><use href="#i-trend"/></svg> Pace trends <b>min/km</b></div>
+    <div class="chip"><svg class="ic"><use href="#i-lock"/></svg> JWT auth <b>bcrypt hashed</b></div>
+    <div class="chip"><svg class="ic"><use href="#i-mail"/></svg> Email OTP <b>verified accounts</b></div>
+    <div class="chip"><svg class="ic"><use href="#i-bike"/></svg> Runs, rides &amp; swims <b>one log</b></div>
+  </div></div>
+
+  <div class="marquee rev"><div class="marquee-track" id="marquee-track2">
+    <div class="chip"><svg class="ic"><use href="#i-bolt"/></svg> FastAPI <b>backend</b></div>
+    <div class="chip"><svg class="ic"><use href="#i-clipboard"/></svg> PostgreSQL <b>storage</b></div>
+    <div class="chip"><svg class="ic"><use href="#i-link"/></svg> SQLAlchemy <b>ORM</b></div>
+    <div class="chip"><svg class="ic"><use href="#i-check"/></svg> Pydantic <b>validation</b></div>
+    <div class="chip"><svg class="ic"><use href="#i-ticket"/></svg> JWT <b>sessions</b></div>
+    <div class="chip"><svg class="ic"><use href="#i-shield"/></svg> Bcrypt <b>+ salt</b></div>
+    <div class="chip"><svg class="ic"><use href="#i-chart"/></svg> Chart.js <b>visuals</b></div>
+    <div class="chip"><svg class="ic"><use href="#i-trash"/></svg> Soft delete <b>5-day grace</b></div>
+  </div></div>
+
+  <section class="section" id="features">
+    <div class="section-head reveal">
+      <div class="kicker">Why EnduranceHub</div>
+      <h2>Three questions every athlete should be able to answer</h2>
+      <p>Distance alone doesn't tell you whether you're building fitness or digging a hole. These do.</p>
+    </div>
+
+    <div class="frow reveal">
+      <div>
+        <h3>How hard was this week, really?</h3>
+        <p>Every session's duration is multiplied by how hard it felt (RPE 1–10) and summed across the week — the session-RPE method sports scientists use to quantify training stress. Two easy hours and one brutal interval session can carry the same load, and only one of them shows up in your mileage.</p>
+        <ul class="flist">
+          <li>Monday-anchored weeks that match your calendar</li>
+          <li>Distance bars and load line on a single chart</li>
+          <li>Instantly spot build weeks vs. recovery weeks</li>
+        </ul>
+      </div>
+      <div class="fvis">
+        <div style="font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:1px; margin-bottom:14px">Load intensity · last 4 weeks</div>
+        <div class="load-grid" id="load-grid"></div>
+        <div style="display:flex; justify-content:space-between; font-size:12px; color:var(--muted); margin-top:12px"><span>Lighter</span><span>Heavier</span></div>
+      </div>
+    </div>
+
+    <div class="frow reveal">
+      <div>
+        <h3>Am I actually getting faster?</h3>
+        <p>Pace is tracked per session and averaged across your whole history, so improvement shows up as a trend instead of a feeling. Personal records update the moment a workout beats them — longest distance, longest duration and best pace, each with the date it happened.</p>
+        <ul class="flist">
+          <li>Records recalculated on every save</li>
+          <li>Best pace ignores sub-1km efforts, so sprints can't fake a record</li>
+          <li>Average pace across all activities, not just runs</li>
+        </ul>
+      </div>
+      <div class="fvis">
+        <div style="font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:1px; margin-bottom:16px">Personal records</div>
+        <div class="pr-list">
+          <div class="pr-item"><span>Longest distance</span><span class="pv">21.1 km</span></div>
+          <div class="pr-item"><span>Longest duration</span><span class="pv">118 min</span></div>
+          <div class="pr-item"><span>Best pace</span><span class="pv">4:38 /km</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="frow reveal">
+      <div>
+        <h3>Am I showing up consistently?</h3>
+        <p>Consistency beats intensity over a season. EnduranceHub counts consecutive training days and remembers your all-time best, and it won't break today's streak just because you haven't logged this evening's session yet.</p>
+        <ul class="flist">
+          <li>Current and longest streak, side by side</li>
+          <li>Grace until end of day — no false breaks</li>
+          <li>Every sport counts, not just running</li>
+        </ul>
+      </div>
+      <div class="fvis">
+        <div style="font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:1px; margin-bottom:14px">Pace trend · min per km</div>
+        <svg viewBox="0 0 320 120" class="pace-line" style="width:100%">
+          <polyline points="10,90 55,82 100,86 145,70 190,64 235,58 280,44 310,40" fill="none" stroke="#4ecdc4" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+          <circle cx="310" cy="40" r="5" fill="#4ecdc4"/>
+        </svg>
+        <div style="display:flex; justify-content:space-between; font-size:12px; color:var(--muted)"><span>8 weeks ago</span><span>Today</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="metrics">
+    <div class="section-head reveal">
+      <div class="kicker">What gets measured</div>
+      <h2>Pick a category, see what's computed</h2>
+      <p>Sixteen endpoints of analytics and account tooling, grouped the way you'd actually think about your training.</p>
+    </div>
+    <div class="tabs-row reveal">
+      <button class="mtab active" onclick="switchMetric('volume', this)">Volume</button>
+      <button class="mtab" onclick="switchMetric('intensity', this)">Intensity</button>
+      <button class="mtab" onclick="switchMetric('consistency', this)">Consistency</button>
+      <button class="mtab" onclick="switchMetric('security', this)">Account</button>
+    </div>
+    <div class="metric-grid reveal" id="metric-grid"></div>
+  </section>
+
+  <section class="section" id="how">
+    <div class="section-head reveal">
+      <div class="kicker">How it works</div>
+      <h2>From empty dashboard to real insight in four steps</h2>
+      <p>No devices to pair, no subscription, no onboarding survey. Log a session and the analytics appear.</p>
+    </div>
+    <div class="steps">
+      <div class="step reveal"><h4>Create your account</h4><p>Register with your email and confirm the six-digit code we send. Your password is bcrypt-hashed before it ever touches the database.</p></div>
+      <div class="step reveal"><h4>Log a session</h4><p>Type, distance, duration and how hard it felt. Add a note if you want to remember why the legs were heavy.</p></div>
+      <div class="step reveal"><h4>Watch the numbers build</h4><p>Load, pace, records and streaks recompute on every save — no refresh button, no waiting for a nightly job.</p></div>
+      <div class="step reveal"><h4>Train on the evidence</h4><p>Use the weekly chart to plan the next block: push when load is flat, back off when it spikes three weeks running.</p></div>
+    </div>
+  </section>
+
+  <section class="section" id="who">
+    <div class="section-head reveal">
+      <div class="kicker">Who it's for</div>
+      <h2>Built for anyone who trains on purpose</h2>
+      <p>One log, three sports, and metrics that mean the same thing whichever one you're doing.</p>
+    </div>
+    <div class="persona-grid">
+      <div class="persona reveal"><div class="ptag">First 5K</div><h4>The new runner</h4><p>You're three weeks in and everything feels hard. The streak counter is your accountability, and the pace trend proves you're improving long before it feels that way.</p></div>
+      <div class="persona reveal"><div class="ptag">Marathon block</div><h4>The race builder</h4><p>You're 14 weeks out and juggling volume against fatigue. Weekly load tells you whether that "easy" week was actually easy, and records confirm the long runs are paying off.</p></div>
+      <div class="persona reveal"><div class="ptag">Multi-sport</div><h4>The cyclist &amp; swimmer</h4><p>Your training doesn't fit a running app. Log rides and swims alongside runs, and let RPE-based load compare sessions that kilometres never could.</p></div>
+    </div>
+  </section>
+
+  <section class="section" id="faq">
+    <div class="section-head reveal">
+      <div class="kicker">FAQ</div>
+      <h2>Questions, answered</h2>
+    </div>
+    <div class="faq reveal" id="faq-list"></div>
+  </section>
+
+  <div class="cta-band reveal">
+    <h2>Your next personal best starts with one logged session.</h2>
+    <p>Free, private, and yours to delete whenever you want.</p>
+    <button class="btn" onclick="openAuth('register')">Create your free account</button>
+  </div>
+
+  <footer>
+    <div class="foot-inner">
+      <div class="foot-brand">
+        <div class="logo">Endurance<span>Hub</span></div>
+        <p>An endurance training analytics platform built with FastAPI, PostgreSQL and a lot of miles.</p>
+      </div>
+      <div class="foot-col">
+        <h5>Product</h5>
+        <a href="#features">Features</a><a href="#metrics">Metrics</a><a href="#how">How it works</a><a href="#faq">FAQ</a>
+      </div>
+      <div class="foot-col">
+        <h5>Account</h5>
+        <span onclick="openAuth('register')">Create account</span><span onclick="openAuth('login')">Log in</span><span onclick="openAuth('login')">Verify email</span>
+      </div>
+      <div class="foot-col">
+        <h5>Developer</h5>
+        <a href="http://localhost:8000/docs">API docs</a><a href="http://localhost:8000/health">Health check</a>
+      </div>
+    </div>
+    <div class="foot-bottom">
+      <span>© <span id="year"></span> EnduranceHub</span>
+      <span>Built by Aryan Surani</span>
+    </div>
+  </footer>
+</div>
+
+<!-- ================= AUTH ================= -->
+<div id="auth-view" class="hidden">
+  <div class="auth-card">
+    <button class="back-link" onclick="showLanding()"><svg class="ic"><use href="#i-arrow-left"/></svg> Back to home</button>
+    <div class="logo">Endurance<span>Hub</span></div>
+
+    <div id="cred-step">
+      <div class="tabs">
+        <button class="tab active" id="tab-login" onclick="switchTab('login')">Log in</button>
+        <button class="tab" id="tab-register" onclick="switchTab('register')">Register</button>
+      </div>
+      <!-- A real <form> with autocomplete hints is what makes the browser's
+           password manager offer to save and auto-fill credentials. -->
+      <div class="saved-user hidden" id="saved-user">
+        <div class="su-av" id="su-initial"></div>
+        <div class="su-txt"><b>Welcome back</b><span id="su-email"></span></div>
+        <button type="button" title="Forget this email" onclick="forgetRemembered()"><svg class="ic"><use href="#i-x"/></svg></button>
+      </div>
+      <form id="auth-form" onsubmit="event.preventDefault(); submitAuth();" autocomplete="on">
+        <div id="field-name" class="hidden"><label for="in-name">Name</label><input id="in-name" name="name" autocomplete="name" placeholder="Aryan"></div>
+        <label for="in-email">Email</label>
+        <input id="in-email" name="username" type="email" autocomplete="username" placeholder="you@example.com">
+        <label for="in-password">Password</label>
+        <input id="in-password" name="password" type="password" autocomplete="current-password" placeholder="min 6 characters">
+        <label class="check-row">
+          <input type="checkbox" id="remember-me" checked>
+          <span>Remember me on this device</span>
+        </label>
+        <button class="btn" id="auth-btn" type="submit">Log in</button>
+      </form>
+      <div class="error-msg" id="auth-error"></div>
+    </div>
+
+    <div id="otp-step" class="hidden">
+      <p style="margin-top:18px; font-size:15px; font-weight:600">Verify your email</p>
+      <p style="color:var(--muted); font-size:13px; margin-top:6px">We sent a 6-digit code to your email. It expires in 10 minutes.</p>
+      <div class="otp-row">
+        <input class="otp-box" maxlength="1" inputmode="numeric">
+        <input class="otp-box" maxlength="1" inputmode="numeric">
+        <input class="otp-box" maxlength="1" inputmode="numeric">
+        <input class="otp-box" maxlength="1" inputmode="numeric">
+        <input class="otp-box" maxlength="1" inputmode="numeric">
+        <input class="otp-box" maxlength="1" inputmode="numeric">
+      </div>
+      <button class="btn" onclick="submitOtp()">Verify &amp; continue</button>
+      <div class="resend-line">Didn't get it? <button id="resend-btn" onclick="resendOtp()">Resend code</button></div>
+      <div class="error-msg" id="otp-error"></div>
+      <div class="info-msg" id="otp-info"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ================= DASHBOARD ================= -->
+<div id="app-view" class="hidden">
+  <header class="app-bar">
+    <div class="bar-left">
+      <div class="logo">Endurance<span>Hub</span></div>
+      <div class="bar-nav">
+        <button class="on" onclick="scrollToEl('overview-top', this)">Overview</button>
+        <button onclick="scrollToEl('feed-top', this)">Activity feed</button>
+        <button onclick="scrollToEl('insights-top', this)">Records</button>
+      </div>
+    </div>
+    <div class="bar-right">
+      <button class="bar-btn" onclick="openLogModal()"><svg class="ic sm"><use href="#i-plus"/></svg> Log activity</button>
+      <button class="round-btn" title="Quick add (N)" onclick="openLogModal()"><svg class="ic sm"><use href="#i-plus"/></svg></button>
+      <div class="menu-wrap">
+        <div class="avatar" id="avatar" onclick="toggleMenu(event)"></div>
+        <div class="menu hidden" id="user-menu">
+          <div class="mhead"><b id="menu-name"></b><span id="menu-mail"></span></div>
+          <button onclick="openGoalModal()"><svg class="ic"><use href="#i-target"/></svg> Set weekly goals</button>
+          <button onclick="openProfileModal()"><svg class="ic"><use href="#i-heart"/></svg> Heart-rate profile</button>
+          <button onclick="window.open(API + '/docs', '_blank')"><svg class="ic"><use href="#i-book"/></svg> API docs</button>
+          <button class="danger" onclick="openDeleteModal()"><svg class="ic"><use href="#i-trash"/></svg> Delete account</button>
+          <button onclick="logout()"><svg class="ic"><use href="#i-logout"/></svg> Log out</button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <div class="dash">
+    <div id="deletion-notice"></div>
+    <!-- ================= 1. PROFILE HERO ================= -->
+    <section class="sec" id="overview-top">
+      <div class="hero-bar">
+        <div class="hb-left">
+          <div class="big-avatar" id="big-avatar"></div>
+          <div>
+            <div class="p-name" id="p-name"></div>
+            <div class="p-mail" id="p-mail"></div>
+            <div class="hb-latest">Latest: <b id="latest-act">nothing logged yet</b></div>
+          </div>
+        </div>
+        <div class="hb-stats">
+          <div class="hb-stat"><div class="n" id="p-acts">0</div><div class="l">Sessions</div></div>
+          <div class="hb-stat"><div class="n" id="p-km">0</div><div class="l">Kilometres</div></div>
+          <div class="hb-stat"><div class="n" id="p-hrs">0</div><div class="l">Hours</div></div>
+          <div class="hb-stat streak">
+            <div class="n"><svg class="ic flame-ico"><use href="#i-flame"/></svg><span id="streak-num">0</span></div>
+            <div class="l">Day streak</div>
+          </div>
+        </div>
+      </div>
+      <div class="hb-note" id="streak-copy">Log a session today to start your streak.</div>
+    </section>
+
+    <!-- ================= 2. THIS WEEK ================= -->
+    <section class="sec">
+      <div class="sec-head">
+        <h2>This week <span class="live-dot"></span></h2>
+        <span class="sub">Monday to Sunday, recomputed on every save</span>
+      </div>
+
+      <div class="grid-3">
+        <div class="card">
+          <div class="card-pad">
+            <div class="side-card-head">
+              <div class="side-ico"><svg class="ic"><use href="#i-target"/></svg></div>
+              <div><h3>Weekly goals</h3><p id="goal-copy">A separate target for each sport.</p></div>
+            </div>
+            <div style="display:flex; align-items:center; gap:16px; margin-top:16px">
+              <div class="ring">
+                <svg width="92" height="92">
+                  <circle cx="46" cy="46" r="38" fill="none" stroke="#1c2733" stroke-width="9"/>
+                  <circle id="goal-arc" cx="46" cy="46" r="38" fill="none" stroke="#ff6b35" stroke-width="9"
+                          stroke-linecap="round" stroke-dasharray="238.8" stroke-dashoffset="238.8"
+                          style="transition: stroke-dashoffset 1s cubic-bezier(.2,.8,.3,1)"/>
+                </svg>
+                <div class="rtxt"><b id="goal-pct">0%</b><span>combined</span></div>
+              </div>
+              <div style="font-size:13px; color:var(--muted); line-height:1.7" id="goal-summary"></div>
+            </div>
+            <div id="goal-rows" style="margin-top:18px"></div>
+          </div>
+          <button class="side-link" onclick="openGoalModal()">Edit weekly goals</button>
+        </div>
+
+        <div class="card">
+          <div class="card-pad">
+            <div class="side-card-head">
+              <div class="side-ico teal"><svg class="ic"><use href="#i-calendar"/></svg></div>
+              <div><h3>Totals</h3><p>Distance, sessions and load so far.</p></div>
+            </div>
+            <div style="margin-top:14px">
+              <div class="kv"><span>Distance</span><b id="w-km">–</b></div>
+              <div class="kv"><span>Sessions</span><b id="w-acts">–</b></div>
+              <div class="kv"><span>Training load</span><b id="w-load">–</b></div>
+              <div class="kv"><span>vs last week</span><b id="w-delta">–</b></div>
+            </div>
+            <div class="effort-head" style="margin-top:20px">Load trend
+              <svg class="ic info-dot"><title>Training load = duration × RPE, summed over the week (session-RPE method).</title><use href="#i-info"/></svg>
+            </div>
+            <div class="effort-num" id="load-num">0</div>
+            <div class="effort-sub" id="load-copy">No load recorded this week yet.</div>
+            <div class="mini-bars" id="mini-bars"></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-pad">
+            <div class="side-card-head">
+              <div class="side-ico"><svg class="ic"><use href="#i-gauge"/></svg></div>
+              <div><h3>Training status</h3><p>Derived from your load — no sensors needed.</p></div>
+            </div>
+            <div id="status-body" style="margin-top:16px"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:18px">
+        <div class="card-pad">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px">
+            <div class="card-title" style="margin:0">Training volume</div>
+            <span class="range-row">
+              <button onclick="setWeeks(4, this)">4w</button>
+              <button class="on" onclick="setWeeks(8, this)">8w</button>
+              <button onclick="setWeeks(12, this)">12w</button>
+            </span>
+          </div>
+          <div class="chart-box wide"><canvas id="weekly-chart"></canvas></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= 3. ACTIVITY FEED ================= -->
+    <section class="sec" id="feed-top">
+      <div class="sec-head">
+        <h2>Activity feed</h2>
+        <span class="sub" id="feed-count"></span>
+      </div>
+
+      <div class="filter-bar">
+        <div class="icon-tabs" id="sport-tabs">
+          <button class="on" title="Everything" onclick="setFilter('all', this)"><svg class="ic tab-ic"><use href="#i-chart"/></svg><span class="lb">All</span></button>
+          <button title="Run, ride, swim, row, hike, walk" onclick="setFilter('distance', this)"><svg class="ic tab-ic"><use href="#i-run"/></svg><span class="lb">Distance</span></button>
+          <button title="Strength, CrossFit, calisthenics, HIIT" onclick="setFilter('strength', this)"><svg class="ic tab-ic"><use href="#i-barbell"/></svg><span class="lb">Strength</span></button>
+          <button title="Team and racket sports" onclick="setFilter('sport', this)"><svg class="ic tab-ic"><use href="#i-football"/></svg><span class="lb">Sports</span></button>
+        </div>
+        <div class="filter-selects">
+          <select id="feed-scope" onchange="setScope(this.value)">
+            <option value="all">All time</option>
+            <option value="week">This week</option>
+            <option value="month">Last 30 days</option>
+            <option value="notes">With notes only</option>
+          </select>
+          <select id="feed-sort" onchange="setSort(this.value)">
+            <option value="date-desc">Newest</option>
+            <option value="date-asc">Oldest</option>
+            <option value="dist-desc">Longest</option>
+            <option value="load-desc">Hardest</option>
+          </select>
+          <button class="bar-btn" onclick="openLogModal()"><svg class="ic sm"><use href="#i-plus"/></svg> Log</button>
+        </div>
+      </div>
+
+      <div class="feed" id="feed"></div>
+    </section>
+
+    <!-- ================= 4. RECORDS & CONSISTENCY ================= -->
+    <section class="sec" id="insights-top">
+      <div class="sec-head">
+        <h2>Records &amp; consistency</h2>
+        <span class="sub">Updated automatically from your history</span>
+      </div>
+
+      <div class="grid-3">
+        <div class="card">
+          <div class="card-pad">
+            <div class="side-card-head">
+              <div class="side-ico purple"><svg class="ic"><use href="#i-trophy"/></svg></div>
+              <div><h3>Personal records</h3><p>Beaten automatically when you go longer or faster.</p></div>
+            </div>
+            <div id="records-list" style="margin-top:14px"></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-pad">
+            <div class="side-card-head">
+              <div class="side-ico"><svg class="ic"><use href="#i-calendar"/></svg></div>
+              <div><h3>Training calendar</h3><p>Every day of the last 13 weeks.</p></div>
+            </div>
+            <div class="cal-grid" id="cal-grid" style="margin-top:16px"></div>
+            <div class="cal-legend"><span>13 weeks ago</span><span>Today</span></div>
+          </div>
+        </div>
+
+        <div class="card" id="log-top">
+          <div class="card-pad">
+            <div class="side-card-head">
+              <div class="side-ico teal"><svg class="ic"><use href="#i-clipboard"/></svg></div>
+              <div><h3>Recent sessions</h3><p>Your last five, at a glance.</p></div>
+            </div>
+            <div class="mini-list" id="mini-list" style="margin-top:14px"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card explainer">
+        <div class="card-pad">
+          <h4>Reading your training load</h4>
+          <p>Load is duration multiplied by perceived effort, summed each week — the session-RPE method, which works the same for a long run, a gym session or a football match. A steady rise of roughly ten percent a week is a sustainable build; three sharp weeks in a row is usually how injuries start. Flat load with improving pace means fitness is arriving, and that's the block worth repeating.</p>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <footer>
+    <div class="foot-inner">
+      <div class="foot-brand">
+        <div class="logo">Endurance<span>Hub</span></div>
+        <p>An endurance training analytics platform built with FastAPI, PostgreSQL and a lot of miles.</p>
+      </div>
+      <div class="foot-col">
+        <h5>Dashboard</h5>
+        <span onclick="scrollToEl('overview-top')">Overview</span><span onclick="scrollToEl('feed-top')">Activity feed</span><span onclick="scrollToEl('insights-top')">Records</span><span onclick="openLogModal()">Log a session</span>
+      </div>
+      <div class="foot-col">
+        <h5>Account</h5>
+        <span onclick="openGoalModal()">Weekly goals</span><span onclick="openDeleteModal()">Delete account</span><span onclick="logout()">Log out</span>
+      </div>
+      <div class="foot-col">
+        <h5>Developer</h5>
+        <a href="http://localhost:8000/docs">API docs</a><a href="http://localhost:8000/health">Health check</a>
+      </div>
+    </div>
+    <div class="foot-bottom">
+      <span>© <span id="year2"></span> EnduranceHub</span>
+      <span>Built by Aryan Surani</span>
+    </div>
+  </footer>
+</div>
+
+<div id="modal-root"></div>
+<div id="sheet-root"></div>
+<div class="toasts" id="toasts"></div>
+
+<script>
+// Served by FastAPI itself, so the API is same-origin (empty base) and no
+// CORS is involved. Opening the file directly still works as a fallback,
+// but Chrome won't offer to save passwords on a file:// page.
+const API = location.protocol.startsWith("http") ? "" : "http://localhost:8000";
+
+const $ = id => document.getElementById(id);
+
+/* Mirrors backend/app/constants.py. Only "distance" sports record km;
+   everything else is logged with duration and effort alone. */
+const SPORTS_META = {
+  run:          { icon: "run",         label: "Run",          cat: "distance" },
+  ride:         { icon: "bike",        label: "Ride",         cat: "distance" },
+  swim:         { icon: "swim",        label: "Swim",         cat: "distance" },
+  row:          { icon: "row",         label: "Row",          cat: "distance" },
+  hike:         { icon: "hike",        label: "Hike",         cat: "distance" },
+  walk:         { icon: "walk",        label: "Walk",         cat: "distance" },
+  strength:     { icon: "barbell",     label: "Strength",     cat: "strength" },
+  crossfit:     { icon: "kettlebell",  label: "CrossFit",     cat: "strength" },
+  calisthenics: { icon: "bar",         label: "Calisthenics", cat: "strength" },
+  hiit:         { icon: "bolt",        label: "HIIT",         cat: "strength" },
+  football:     { icon: "football",    label: "Football",     cat: "sport" },
+  basketball:   { icon: "basketball",  label: "Basketball",   cat: "sport" },
+  cricket:      { icon: "cricket",     label: "Cricket",      cat: "sport" },
+  tennis:       { icon: "tennis",      label: "Tennis",       cat: "sport" },
+  badminton:    { icon: "badminton",   label: "Badminton",    cat: "sport" },
+  tabletennis:  { icon: "pingpong",    label: "Table tennis", cat: "sport" },
+  volleyball:   { icon: "volleyball",  label: "Volleyball",   cat: "sport" },
+  hockey:       { icon: "hockey",      label: "Hockey",       cat: "sport" },
+  rugby:        { icon: "rugby",       label: "Rugby",        cat: "sport" },
+  baseball:     { icon: "baseball",    label: "Baseball",     cat: "sport" },
+  golf:         { icon: "golf",        label: "Golf",         cat: "sport" },
+  boxing:       { icon: "boxing",      label: "Boxing",       cat: "sport" },
+  martialarts:  { icon: "martialarts", label: "Martial arts", cat: "sport" },
+  climbing:     { icon: "climb",       label: "Climbing",     cat: "sport" },
+  skiing:       { icon: "snow",        label: "Skiing",       cat: "sport" },
+  yoga:         { icon: "yoga",        label: "Yoga",         cat: "other" },
+  pilates:      { icon: "ring",        label: "Pilates",      cat: "other" },
+  other:        { icon: "sparkle",     label: "Other",        cat: "other" },
+};
+const CATEGORIES = {
+  distance: { label: "Distance", icon: "run",     unit: "km" },
+  strength: { label: "Strength", icon: "barbell", unit: "min" },
+  sport:    { label: "Sports",   icon: "football", unit: "min" },
+  other:    { label: "Other",    icon: "yoga",    unit: "min" },
+};
+
+// Renders a sprite glyph. Colour and size come from the parent element.
+const ic = (name, cls = "") => `<svg class="ic ${cls}"><use href="#i-${name}"/></svg>`;
+
+/* Number input with custom chevron steppers. The native spinners are
+   hidden in CSS because they're unstyleable and only appear on hover. */
+function numField(id, o = {}) {
+  const { value = "", min = 0, max = 9999, step = 1, size = "w-full", ph = "" } = o;
+  return `<div class="numwrap ${size}">
+    <input id="${id}" type="number" value="${value}" min="${min}" max="${max}" step="${step}" placeholder="${ph}"
+           ${o.oninput ? `oninput="${o.oninput}"` : ""}>
+    <span class="numsteps">
+      <button type="button" tabindex="-1" aria-label="Increase" onclick="stepNum('${id}', 1)">${ic("chevron-up")}</button>
+      <button type="button" tabindex="-1" aria-label="Decrease" onclick="stepNum('${id}', -1)">${ic("chevron-down")}</button>
+    </span>
+  </div>`;
+}
+
+function stepNum(id, dir) {
+  const el = $(id);
+  if (!el) return;
+  const step = parseFloat(el.step) || 1;
+  const min = el.min === "" ? -Infinity : parseFloat(el.min);
+  const max = el.max === "" ? Infinity : parseFloat(el.max);
+  // toFixed avoids 0.1 + 0.2 style drift on fractional steps.
+  let v = +(((parseFloat(el.value) || 0) + dir * step).toFixed(4));
+  el.value = Math.min(max, Math.max(min, v));
+  // Let listeners (like the RPE suggestion) react as if it were typed.
+  el.dispatchEvent(new Event("input", { bubbles: true }));
+}
+
+const meta = t => SPORTS_META[t] || SPORTS_META.other;
+const isDistance = t => meta(t).cat === "distance";
+const sportsIn = cat => Object.keys(SPORTS_META).filter(t => SPORTS_META[t].cat === cat);
+
+// Single source of truth for the dashboard: every render reads from here.
+const state = {
+  me: null, activities: [], summary: null, weekly: [], records: null, streak: null,
+  filter: "all", scope: "all", sort: "date-desc", weeks: 8, editingId: null,
+  goals: loadGoals(),
+};
+
+// Goals are per sport, measured in km for distance sports and minutes for
+// everything else. Older versions stored one number: migrate it to run.
+function loadGoals() {
+  const saved = localStorage.getItem("weeklyGoals");
+  if (saved) { try { return JSON.parse(saved); } catch (_) { /* fall through */ } }
+  const legacy = parseFloat(localStorage.getItem("weeklyGoal"));
+  return { run: legacy > 0 ? legacy : 30 };
+}
+let chart = null;
+
+function show(view) {
+  ["landing-view", "auth-view", "app-view"].forEach(v => $(v).classList.toggle("hidden", v !== view));
+  window.scrollTo(0, 0);
+}
+
+// Small wrapper around fetch: attaches the JWT header, parses JSON,
+// and throws a readable error when the API rejects the request.
+async function api(method, path, body) {
+  const headers = { "Content-Type": "application/json" };
+  const token = localStorage.getItem("token");
+  if (token) headers["Authorization"] = "Bearer " + token;
+  const resp = await fetch(API + path, { method, headers, body: body ? JSON.stringify(body) : undefined });
+  if (resp.status === 401 && !["/login", "/verify-email"].includes(path)) { logout(); throw new Error("Session expired - please log in again"); }
+  if (resp.status === 204) return null;
+  const data = await resp.json().catch(() => ({}));
+  if (!resp.ok) {
+    const detail = typeof data.detail === "string" ? data.detail : "Request failed (" + resp.status + ")";
+    const err = new Error(detail); err.status = resp.status; throw err;
+  }
+  return data;
+}
+
+/* ---------- toasts, modals, popover sheets ---------- */
+function toast(msg, isError) {
+  const el = document.createElement("div");
+  el.className = "toast" + (isError ? " err" : "");
+  el.textContent = msg;
+  $("toasts").appendChild(el);
+  setTimeout(() => el.remove(), 3200);
+}
+
+function closeModal() { $("modal-root").innerHTML = ""; }
+function closeSheet() { $("sheet-root").innerHTML = ""; }
+
+function openModal(html) {
+  $("modal-root").innerHTML = `<div class="overlay" onclick="if(event.target===this) closeModal()"><div class="modal">${html}</div></div>`;
+}
+
+// Esc closes overlays; "n" opens the log form when not typing in a field.
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape") { closeModal(); closeSheet(); $("user-menu").classList.add("hidden"); }
+  const typing = ["INPUT", "SELECT", "TEXTAREA"].includes(document.activeElement.tagName);
+  if (e.key.toLowerCase() === "n" && !typing && !$("app-view").classList.contains("hidden") && !$("modal-root").innerHTML) {
+    e.preventDefault(); openLogModal();
+  }
+});
+
+function toggleMenu(e) { e.stopPropagation(); $("user-menu").classList.toggle("hidden"); }
+document.addEventListener("click", () => { $("user-menu").classList.add("hidden"); closeSheet(); });
+
+/* ================= landing page ================= */
+$("year").textContent = new Date().getFullYear();
+$("year2").textContent = new Date().getFullYear();
+
+const barHeights = [45, 70, 55, 88, 62, 95, 40];
+$("mock-bars").innerHTML = barHeights.map((h, i) =>
+  `<div style="height:${h}%; animation-delay:${i * 0.08}s"></div>`).join("");
+
+// Staggered delays make the heat cells ripple diagonally instead of
+// pulsing all at once.
+const loadLevels = [1,2,0,3,1,4,0, 2,1,3,0,2,4,1, 1,3,2,0,4,2,1, 3,2,4,1,0,3,2];
+$("load-grid").innerHTML = loadLevels.map((l, i) =>
+  `<div class="lv${l}" style="animation-delay:${((i % 7) + Math.floor(i / 7)) * 0.13}s"></div>`).join("");
+
+// Scroll progress bar across the top of the page.
+addEventListener("scroll", () => {
+  const max = document.documentElement.scrollHeight - innerHeight;
+  $("scroll-bar").style.width = (max > 0 ? (scrollY / max) * 100 : 0) + "%";
+}, { passive: true });
+
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add("visible"); observer.unobserve(e.target); } });
+}, { threshold: 0.12 });
+document.querySelectorAll(".reveal").forEach(el => observer.observe(el));
+
+function animateCounters() {
+  document.querySelectorAll("[data-count]").forEach(el => {
+    const target = +el.dataset.count, dur = 1500, t0 = performance.now();
+    const tick = t => {
+      const p = Math.min((t - t0) / dur, 1);
+      el.textContent = Math.round(target * (1 - Math.pow(1 - p, 3)));
+      if (p < 1) requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  });
+}
+animateCounters();
+
+// Duplicating the track content makes the -50% scroll loop seamlessly.
+$("marquee-track").innerHTML += $("marquee-track").innerHTML;
+$("marquee-track2").innerHTML += $("marquee-track2").innerHTML;
+
+const METRICS = {
+  volume: [
+    { i: "ruler", h: "Total distance", p: "Every kilometre across every sport, summed and rounded — the headline number on your dashboard." },
+    { i: "calendar", h: "Weekly mileage", p: "Distance bucketed into Monday-anchored weeks, so your training week matches your calendar week." },
+    { i: "clock", h: "Total duration", p: "Time on feet (or bike, or in water) — often the more honest measure of a training block than distance." },
+  ],
+  intensity: [
+    { i: "flame", h: "Training load", p: "Duration × RPE per session, summed weekly. The session-RPE method used across sports science." },
+    { i: "bolt", h: "Average pace", p: "Minutes per kilometre across your history, and per session in the activity feed." },
+    { i: "gauge", h: "Average effort", p: "Mean RPE across all sessions — a quick read on whether you're training too hard, too often." },
+  ],
+  consistency: [
+    { i: "link", h: "Current streak", p: "Consecutive days with at least one logged session, with grace until end of day." },
+    { i: "medal", h: "Longest streak", p: "Your all-time best run of consecutive training days, calculated across your full history." },
+    { i: "trophy", h: "Personal records", p: "Longest distance, longest duration and best pace, each stamped with the date you set it." },
+  ],
+  security: [
+    { i: "lock", h: "Verified accounts", p: "Six-digit email codes with a ten-minute expiry, attempt limits and a resend cooldown." },
+    { i: "ticket", h: "Token-based sessions", p: "Signed JWTs prove who you are on every request — your password travels exactly once." },
+    { i: "trash", h: "Deletion with a grace period", p: "Delete your account and everything in it, with five days to change your mind." },
+  ],
+};
+
+function switchMetric(key, btn) {
+  document.querySelectorAll(".mtab").forEach(b => b.classList.remove("active"));
+  btn.classList.add("active");
+  // Cards fade in one after another so switching tabs feels alive.
+  $("metric-grid").innerHTML = METRICS[key].map((m, i) =>
+    `<div class="mcard rise" style="animation-delay:${i * 0.09}s"><div class="mi">${ic(m.i)}</div><h4>${m.h}</h4><p>${m.p}</p></div>`).join("");
+}
+switchMetric("volume", document.querySelector(".mtab"));
+
+const FAQS = [
+  ["Is EnduranceHub free?", "Yes — it's a personal project, not a business. There's no subscription, no ads and no upsell. You run it yourself, so the only cost is where you choose to host it."],
+  ["What is RPE, and why does it matter?", "RPE is Rate of Perceived Exertion, a 1–10 scale of how hard a session felt. Multiplied by duration it gives training load, which captures stress that distance alone misses — a short brutal interval session can cost more than a long easy jog."],
+  ["Do I need a GPS watch?", "No. You log sessions manually, which takes about ten seconds. GPX and FIT file uploads are on the roadmap for importing watch data automatically."],
+  ["Can I track cycling and swimming too?", "Yes. Runs, rides, swims and a catch-all 'other' type all live in the same log, and every metric works across all of them."],
+  ["Where is my data stored?", "In your own PostgreSQL database. Nothing is sent anywhere else — no third-party analytics, no data sharing, no exceptions."],
+  ["What happens if I delete my account?", "It's scheduled for deletion and you get a five-day window to cancel. After that, your profile, activities and verification codes are permanently removed."],
+];
+$("faq-list").innerHTML = FAQS.map(([q, a], i) => `
+  <div class="faq-item" id="faq-${i}">
+    <button class="faq-q" onclick="toggleFaq(${i})">${q}${ic("plus", "ico")}</button>
+    <div class="faq-a"><p>${a}</p></div>
+  </div>`).join("");
+
+function toggleFaq(i) {
+  const item = $("faq-" + i);
+  const wasOpen = item.classList.contains("open");
+  document.querySelectorAll(".faq-item").forEach(el => {
+    el.classList.remove("open");
+    el.querySelector(".faq-a").style.maxHeight = null;
+  });
+  if (!wasOpen) {
+    item.classList.add("open");
+    const body = item.querySelector(".faq-a");
+    body.style.maxHeight = body.scrollHeight + "px";
+  }
+}
+
+/* ================= auth flow ================= */
+let authMode = "login";
+let pendingEmail = null;
+
+function showLanding() { show("landing-view"); }
+function openAuth(mode) { show("auth-view"); backToCreds(); switchTab(mode); }
+
+function switchTab(mode) {
+  authMode = mode;
+  $("tab-login").classList.toggle("active", mode === "login");
+  $("tab-register").classList.toggle("active", mode === "register");
+  $("field-name").classList.toggle("hidden", mode === "login");
+  $("auth-btn").textContent = mode === "login" ? "Log in" : "Create account";
+  $("auth-error").textContent = "";
+  // Tells the password manager whether to offer an existing password
+  // or generate/save a new one.
+  $("in-password").autocomplete = mode === "login" ? "current-password" : "new-password";
+  prefillRemembered();
+}
+
+/* ---------- remember me ----------
+   We store only the email address. The password itself is left to the
+   browser's password manager, which encrypts it with the OS keychain -
+   putting a plaintext password in localStorage would expose it to any
+   XSS on the page. */
+function prefillRemembered() {
+  const saved = localStorage.getItem("rememberedEmail");
+  const box = $("saved-user");
+  if (saved && authMode === "login") {
+    box.classList.remove("hidden");
+    $("su-initial").textContent = saved.charAt(0).toUpperCase();
+    $("su-email").textContent = saved;
+    $("in-email").value = saved;
+    $("remember-me").checked = true;
+    // Focus the password field so the browser can auto-fill it.
+    setTimeout(() => $("in-password").focus(), 60);
+  } else {
+    box.classList.add("hidden");
+  }
+}
+
+function forgetRemembered() {
+  localStorage.removeItem("rememberedEmail");
+  $("in-email").value = "";
+  $("in-password").value = "";
+  prefillRemembered();
+  $("in-email").focus();
+  toast("Saved email removed from this device");
+}
+
+function backToCreds() {
+  $("cred-step").classList.remove("hidden");
+  $("otp-step").classList.add("hidden");
+}
+
+function showOtpStep(email) {
+  pendingEmail = email;
+  $("cred-step").classList.add("hidden");
+  $("otp-step").classList.remove("hidden");
+  $("otp-error").textContent = ""; $("otp-info").textContent = "";
+  otpBoxes.forEach(b => b.value = "");
+  otpBoxes[0].focus();
+  startResendCooldown(60);
+}
+
+async function submitAuth() {
+  const email = $("in-email").value.trim();
+  const password = $("in-password").value;
+  $("auth-error").textContent = "";
+  try {
+    if (authMode === "register") {
+      const name = $("in-name").value.trim();
+      await api("POST", "/register", { name, email, password });
+      // Account created but unverified -> collect the emailed code.
+      showOtpStep(email);
+      return;
+    }
+    const tok = await api("POST", "/login", { email, password });
+    localStorage.setItem("token", tok.access_token);
+    await rememberIfWanted(email, password);
+    enterApp();
+  } catch (e) {
+    // 403 = right password, unverified email -> jump to the OTP screen.
+    if (e.status === 403) { showOtpStep(email); resendOtp(true); }
+    else $("auth-error").textContent = e.message;
+  }
+}
+
+/* Hands the credential to the browser, which then shows its own native
+   "Save password?" bubble - the same one Google's sites trigger. The
+   password lands in the OS keychain, never in our storage. Requires a
+   secure context, which http://localhost counts as; a file:// page does
+   not, which is why the app is served by FastAPI. */
+async function rememberIfWanted(email, password, name) {
+  if (!$("remember-me") || !$("remember-me").checked) {
+    localStorage.removeItem("rememberedEmail");
+    return;
+  }
+  localStorage.setItem("rememberedEmail", email);
+
+  if (window.PasswordCredential && navigator.credentials) {
+    try {
+      await navigator.credentials.store(new PasswordCredential({
+        id: email, password, name: name || email,
+      }));
+    } catch (_) { /* user dismissed the prompt - nothing to do */ }
+  }
+}
+
+/* Google-style silent return: if the browser already has a saved
+   credential for this site, offer it and sign in without a typed
+   password. mediation "optional" means the browser may show its account
+   chooser but never blocks the page waiting for one. */
+async function tryAutoSignIn() {
+  if (!window.PasswordCredential || !navigator.credentials) return false;
+  try {
+    const cred = await navigator.credentials.get({ password: true, mediation: "optional" });
+    if (!cred || !cred.password) return false;
+    const tok = await api("POST", "/login", { email: cred.id, password: cred.password });
+    localStorage.setItem("token", tok.access_token);
+    await enterApp();
+    return true;
+  } catch (e) {
+    // Unverified account still needs its code; anything else falls back
+    // to the normal login form.
+    if (e && e.status === 403) { openAuth("login"); showOtpStep(e.email || $("in-email").value); }
+    return false;
+  }
+}
+
+/* OTP boxes: auto-advance, backspace to previous, paste support */
+const otpBoxes = [...document.querySelectorAll(".otp-box")];
+otpBoxes.forEach((box, i) => {
+  box.addEventListener("input", () => {
+    box.value = box.value.replace(/\D/g, "");
+    if (box.value && i < 5) otpBoxes[i + 1].focus();
+  });
+  box.addEventListener("keydown", e => {
+    if (e.key === "Backspace" && !box.value && i > 0) otpBoxes[i - 1].focus();
+  });
+  box.addEventListener("paste", e => {
+    const digits = (e.clipboardData.getData("text").match(/\d/g) || []).slice(0, 6);
+    if (digits.length) { e.preventDefault(); digits.forEach((d, j) => otpBoxes[j] && (otpBoxes[j].value = d)); otpBoxes[Math.min(digits.length, 5)].focus(); }
+  });
+});
+
+async function submitOtp() {
+  const code = otpBoxes.map(b => b.value).join("");
+  $("otp-error").textContent = "";
+  if (code.length !== 6) { $("otp-error").textContent = "Enter all 6 digits."; return; }
+  try {
+    // Successful verification returns a token: verified users land
+    // straight on their dashboard with no extra login step.
+    const tok = await api("POST", "/verify-email", { email: pendingEmail, code });
+    localStorage.setItem("token", tok.access_token);
+    // Offer to save the password the user just registered with, too.
+    await rememberIfWanted(pendingEmail, $("in-password").value, $("in-name").value);
+    enterApp();
+  } catch (e) { $("otp-error").textContent = e.message; }
+}
+
+let cooldownTimer = null;
+function startResendCooldown(secs) {
+  const btn = $("resend-btn");
+  clearInterval(cooldownTimer);
+  let left = secs;
+  btn.disabled = true; btn.textContent = `Resend in ${left}s`;
+  cooldownTimer = setInterval(() => {
+    if (--left <= 0) { clearInterval(cooldownTimer); btn.disabled = false; btn.textContent = "Resend code"; }
+    else btn.textContent = `Resend in ${left}s`;
+  }, 1000);
+}
+
+async function resendOtp(silent) {
+  $("otp-error").textContent = "";
+  try {
+    await api("POST", "/resend-otp", { email: pendingEmail });
+    $("otp-info").textContent = "New code sent.";
+    startResendCooldown(60);
+  } catch (e) { if (!silent) $("otp-error").textContent = e.message; }
+}
+
+// Logging out clears the session token but keeps the remembered email,
+// so the next visit is one password away.
+function logout() {
+  localStorage.removeItem("token");
+  show("landing-view");
+}
+
+/* ================= dashboard ================= */
+async function enterApp() {
+  const me = await api("GET", "/me");
+  state.me = me;
+  const initial = me.name.charAt(0).toUpperCase();
+  $("avatar").textContent = initial;
+  $("big-avatar").textContent = initial;
+  $("p-name").textContent = me.name;
+  $("p-mail").textContent = me.email;
+  $("menu-name").textContent = me.name;
+  $("menu-mail").textContent = me.email;
+  show("app-view");
+  renderDeletionNotice();
+  refreshAll();
+}
+
+// One refresh reloads everything, so every widget agrees with the database.
+async function refreshAll() {
+  const [summary, weekly, records, streak, activities, status, thresholds] = await Promise.all([
+    api("GET", "/analytics/summary"),
+    api("GET", "/analytics/weekly?weeks=" + state.weeks),
+    api("GET", "/analytics/records"),
+    api("GET", "/analytics/streak"),
+    api("GET", "/activities?limit=200"),
+    api("GET", "/analytics/load-metrics"),
+    api("GET", "/analytics/thresholds"),
+  ]);
+  Object.assign(state, { summary, weekly, records, streak, activities, status, thresholds });
+  renderProfile();
+  renderLoadCard();
+  renderGoals();
+  renderCalendar();
+  renderFeed();
+  renderChart();
+  renderThisWeek();
+  renderRecords();
+  renderStatus();
+  renderMiniList();
+}
+
+/* ---------- training status (ACWR / monotony / strain) ---------- */
+const ACWR_COPY = {
+  "building baseline": "Keep logging — the ratio needs about two weeks of history before it means anything.",
+  "detraining": "This week is well below your recent average. Fine if it's a planned taper, otherwise you're losing fitness.",
+  "optimal": "Your week sits in the range associated with steady, sustainable progress.",
+  "elevated": "You've stepped up sharply. One week is fine; two in a row is worth watching.",
+  "spike": "This week is far above your recent average — the pattern most associated with injury risk. Consider backing off.",
+};
+const ACWR_COLOUR = {
+  "building baseline": "var(--muted)", "detraining": "#378add",
+  "optimal": "var(--accent2)", "elevated": "#ef9f27", "spike": "var(--danger)",
+};
+
+function renderStatus() {
+  const s = state.status;
+  const colour = ACWR_COLOUR[s.acwr_status];
+  // Marker position on a 0 - 2.0 scale, matching the gradient bar.
+  const pos = s.acwr === null ? null : Math.min(s.acwr / 2, 1) * 100;
+  const maxDay = Math.max(...s.daily_load, 1);
+
+  $("status-body").innerHTML = `
+    <div class="st-top">
+      <div>
+        <div class="stv" style="color:${colour}">${s.acwr === null ? "–" : s.acwr}</div>
+        <div style="font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.9px">Acute : chronic</div>
+      </div>
+      <span class="st-pill" style="background:${colour}22; color:${colour}">${s.acwr_status}</span>
+    </div>
+    <div class="st-scale">${pos === null ? "" : `<div class="st-marker" style="left:calc(${pos}% - 2px)"></div>`}</div>
+    <div class="st-ticks"><span>0.8</span><span>1.3</span><span>1.5</span><span>2.0+</span></div>
+
+    <div class="kv" style="margin-top:14px"><span>Load this week</span><b>${s.acute_load.toLocaleString()}</b></div>
+    <div class="kv"><span>4-week average</span><b>${s.chronic_load.toLocaleString()}</b></div>
+    <div class="kv"><span>Monotony</span><b class="${s.monotony && s.monotony >= 2 ? "" : "teal"}">${s.monotony ?? "–"}</b></div>
+    <div class="kv"><span>Strain</span><b>${s.strain ? s.strain.toLocaleString() : "–"}</b></div>
+
+    <div class="st-spark">
+      ${s.daily_load.map(v => `<div class="${v > 0 ? "on" : ""}" style="height:${Math.max(4, (v / maxDay) * 100)}%" title="load ${v}"></div>`).join("")}
+    </div>
+    <div class="st-ticks"><span>28 days ago</span><span>Today</span></div>
+
+    <div class="st-note">${ACWR_COPY[s.acwr_status]}<br><br><b style="color:var(--text)">Monotony:</b> ${s.monotony_status}.</div>`;
+}
+
+function countUp(el, target, decimals) {
+  const dur = 800, t0 = performance.now();
+  const tick = t => {
+    const p = Math.min((t - t0) / dur, 1);
+    el.textContent = (target * (1 - Math.pow(1 - p, 3))).toFixed(decimals);
+    if (p < 1) requestAnimationFrame(tick);
+  };
+  requestAnimationFrame(tick);
+}
+
+function renderProfile() {
+  const s = state.summary;
+  countUp($("p-acts"), s.total_activities, 0);
+  countUp($("p-km"), s.total_distance_km, 1);
+  countUp($("p-hrs"), s.total_duration_min / 60, 1);
+
+  const latest = [...state.activities].sort((a, b) => b.date.localeCompare(a.date))[0];
+  $("latest-act").textContent = latest
+    ? `${sessionTitle(latest)} · ${formatDate(latest.date)}`
+    : "nothing logged yet";
+
+  const st = state.streak;
+  $("streak-num").textContent = st.current_streak;
+  $("streak-copy").textContent = st.current_streak === 0
+    ? "Log a session today to start your streak."
+    : `${st.current_streak} consecutive day${st.current_streak > 1 ? "s" : ""} of training. Your best is ${st.longest_streak}.`;
+}
+
+// Left-rail load card: this week's number plus a sparkline of recent weeks.
+function renderLoadCard() {
+  const w = state.weekly, cur = w[w.length - 1];
+  if (!cur) return;
+  $("load-num").textContent = cur.training_load.toLocaleString();
+  const avg = w.reduce((s, x) => s + x.training_load, 0) / w.length;
+  $("load-copy").textContent = cur.training_load === 0
+    ? "No load recorded this week yet."
+    : cur.training_load > avg * 1.15 ? "Above your recent average — watch recovery."
+    : cur.training_load < avg * 0.85 ? "Lighter than usual. A good week to absorb training."
+    : "In line with your recent average.";
+  const max = Math.max(...w.map(x => x.training_load), 1);
+  $("mini-bars").innerHTML = w.map((x, i) => {
+    const h = Math.max(4, (x.training_load / max) * 100);
+    const cls = i === w.length - 1 ? "cur" : x.training_load > avg ? "hot" : "";
+    return `<div class="${cls}" style="height:${h}%; animation-delay:${i * 0.05}s" title="${x.week_start}: ${x.training_load}"></div>`;
+  }).join("");
+}
+
+// Monday-anchored start of the current week, as an ISO date string.
+function weekStartKey() {
+  const now = new Date();
+  const monday = new Date(now);
+  monday.setDate(now.getDate() - ((now.getDay() + 6) % 7));
+  return monday.toISOString().slice(0, 10);
+}
+
+// The weekly endpoint returns totals only, so per-sport progress is summed
+// here: kilometres for distance sports, minutes for everything else.
+function thisWeekBySport() {
+  const from = weekStartKey();
+  const out = {};
+  state.activities.forEach(a => {
+    if (a.date < from) return;
+    const t = SPORTS_META[a.activity_type] ? a.activity_type : "other";
+    out[t] = (out[t] || 0) + (isDistance(t) ? (a.distance_km || 0) : a.duration_min);
+  });
+  return out;
+}
+
+function renderGoals() {
+  const doneRaw = thisWeekBySport();
+  const done = new Proxy(doneRaw, { get: (o, k) => o[k] || 0 });
+  const active = Object.keys(state.goals).filter(s => state.goals[s] > 0 && SPORTS_META[s]);
+
+  if (!active.length) {
+    $("goal-rows").innerHTML = `<div class="goal-empty">No targets set yet. Add one per sport to track your week.</div>`;
+    $("goal-arc").style.strokeDashoffset = 238.8;
+    $("goal-pct").textContent = "–";
+    $("goal-summary").innerHTML = "Set a target for the sports you're training.";
+    return;
+  }
+
+  // Combined ring: average of each sport's own completion, so km and
+  // minutes are never added together.
+  const pct = active.reduce((s, k) => s + Math.min(done[k] / state.goals[k], 1), 0) / active.length;
+  $("goal-arc").style.strokeDashoffset = 238.8 * (1 - pct);
+  $("goal-arc").style.stroke = pct >= 1 ? "#4ecdc4" : "#ff6b35";
+  $("goal-pct").textContent = Math.round(pct * 100) + "%";
+
+  const hit = active.filter(k => done[k] >= state.goals[k]).length;
+  $("goal-summary").innerHTML =
+    `<b style="color:var(--text); font-size:17px">${hit}/${active.length}</b> goals met<br>` +
+    (hit === active.length ? "Perfect week 🎉" : "Monday to Sunday");
+
+  $("goal-rows").innerHTML = active.map(s => {
+    const target = state.goals[s], d = done[s], m = meta(s);
+    // Distance reads as km; time reads as "2h 15m" rather than "135 min".
+    const fmt = isDistance(s) ? (n => n.toFixed(1) + " km") : formatTime;
+    const p = Math.min(d / target, 1) * 100;
+    const colour = d >= target ? "var(--accent2)" : p > 60 ? "var(--accent)" : "#ff8f5e";
+    return `
+      <div class="goal-row">
+        <div class="gtop">
+          <span class="gname">${ic(m.icon)} ${m.label}</span>
+          <span class="gval"><b>${fmt(d)}</b> / ${fmt(target)}</span>
+        </div>
+        <div class="gbar"><div class="gfill" style="width:${p}%; background:${colour}"></div></div>
+      </div>`;
+  }).join("");
+}
+
+function openGoalModal() {
+  // Distance sports get a km target; strength, sports and classes get
+  // minutes, because kilometres mean nothing for a squat session.
+  // Distance sports take kilometres; everything else takes hours and
+  // minutes, which is how people actually think about gym or match time.
+  const row = (s, cat) => {
+    const mins = state.goals[s] || 0;
+    const fields = cat === "distance"
+      ? `${numField("goal-" + s, { value: mins || "", min: 0, max: 1000, step: 0.5, size: "w-goal", ph: "0" })}
+         <span class="gm-unit">km</span>`
+      : `${numField("goal-" + s + "-h", { value: Math.floor(mins / 60) || "", min: 0, max: 99, step: 1, size: "w-time", ph: "0" })}
+         <span class="gm-unit">hr</span>
+         ${numField("goal-" + s + "-m", { value: mins % 60 || "", min: 0, max: 59, step: 5, size: "w-time", ph: "0" })}
+         <span class="gm-unit">min</span>`;
+    return `<div class="goal-modal-row">
+      <div class="gm-ico">${ic(SPORTS_META[s].icon)}</div>
+      <div class="gm-name">${SPORTS_META[s].label}</div>
+      ${fields}
+    </div>`;
+  };
+
+  const group = cat => `
+    <div class="goal-group"><span>${ic(CATEGORIES[cat].icon)} ${CATEGORIES[cat].label}</span>
+      <span>${cat === "distance" ? "target in km" : "target in hr + min"}</span></div>
+    ${sportsIn(cat).map(s => row(s, cat)).join("")}`;
+
+  openModal(`
+    <div class="modal-head"><h3>Weekly goals</h3><button onclick="closeModal()" aria-label="Close">${ic("x")}</button></div>
+    <p class="sub">A target per sport, per week. Leave a sport at zero to hide it from your dashboard.</p>
+    ${Object.keys(CATEGORIES).map(group).join("")}
+    <button class="btn" onclick="saveGoals()">Save goals</button>`);
+  $("goal-run").focus();
+}
+
+function saveGoals() {
+  const next = {};
+  Object.keys(SPORTS_META).forEach(s => {
+    // Hours and minutes are collapsed back into a single minute total,
+    // so the stored shape stays the same as the distance sports.
+    const v = isDistance(s)
+      ? parseFloat(($("goal-" + s) || {}).value) || 0
+      : (parseFloat(($("goal-" + s + "-h") || {}).value) || 0) * 60
+        + (parseFloat(($("goal-" + s + "-m") || {}).value) || 0);
+    if (v > 0) next[s] = Math.max(0, v);
+  });
+  state.goals = next;
+  localStorage.setItem("weeklyGoals", JSON.stringify(next));
+  closeModal(); renderGoals(); toast("Weekly goals updated");
+}
+
+// 13-week calendar heatmap built from the activity list.
+function renderCalendar() {
+  const byDay = {};
+  state.activities.forEach(a => { byDay[a.date] = (byDay[a.date] || 0) + a.duration_min * a.rpe; });
+  const today = new Date();
+  const cells = [];
+  for (let i = 90; i >= 0; i--) {
+    const d = new Date(today); d.setDate(d.getDate() - i);
+    const key = d.toISOString().slice(0, 10);
+    const load = byDay[key] || 0;
+    const lvl = load === 0 ? 0 : load < 150 ? 1 : load < 300 ? 2 : load < 500 ? 3 : 4;
+    // Tiny stagger so the grid pops in left-to-right rather than at once.
+    cells.push(`<i class="${lvl ? "lv" + lvl : ""}" style="animation-delay:${(90 - i) * 0.006}s" title="${key}${load ? " · load " + Math.round(load) : ""}"></i>`);
+  }
+  $("cal-grid").innerHTML = cells.join("");
+}
+
+/* ---------- feed ---------- */
+function setFilter(f, btn) {
+  state.filter = f;
+  document.querySelectorAll("#sport-tabs button").forEach(b => b.classList.remove("on"));
+  btn.classList.add("on");
+  renderFeed();
+}
+function setScope(v) { state.scope = v; renderFeed(); }
+function setSort(v) { state.sort = v; renderFeed(); }
+
+function visibleActivities() {
+  const now = new Date();
+  const monday = new Date(now); monday.setDate(now.getDate() - ((now.getDay() + 6) % 7));
+  const mondayKey = monday.toISOString().slice(0, 10);
+  const monthAgo = new Date(now); monthAgo.setDate(now.getDate() - 30);
+  const monthKey = monthAgo.toISOString().slice(0, 10);
+
+  const list = state.activities.filter(a => {
+    // The sport tabs filter by category, so "Strength" covers gym work,
+    // CrossFit, calisthenics and HIIT in one click.
+    if (state.filter !== "all" && meta(a.activity_type).cat !== state.filter) return false;
+    if (state.scope === "week" && a.date < mondayKey) return false;
+    if (state.scope === "month" && a.date < monthKey) return false;
+    if (state.scope === "notes" && !a.notes) return false;
+    return true;
+  });
+  const sorters = {
+    "date-desc": (a, b) => b.date.localeCompare(a.date) || b.id - a.id,
+    "date-asc": (a, b) => a.date.localeCompare(b.date) || a.id - b.id,
+    "dist-desc": (a, b) => (b.distance_km || 0) - (a.distance_km || 0),
+    "load-desc": (a, b) => (b.duration_min * b.rpe) - (a.duration_min * a.rpe),
+  };
+  return list.sort(sorters[state.sort]);
+}
+
+// Sessions get a readable title from the weekday and sport, e.g. "Friday Run".
+function sessionTitle(a) {
+  const d = new Date(a.date + "T00:00:00");
+  const day = d.toLocaleDateString(undefined, { weekday: "long" });
+  return `${day} ${meta(a.activity_type).label}`;
+}
+
+function renderFeed() {
+  const list = visibleActivities();
+  const box = $("feed");
+  $("feed-count").textContent = state.activities.length
+    ? `Showing ${list.length} of ${state.activities.length} sessions`
+    : "";
+  if (!list.length) {
+    box.innerHTML = `<div class="empty">${state.activities.length
+      ? "No sessions match these filters."
+      : "Nothing logged yet — hit <b>Log activity</b> (or press N) to add your first session."}</div>`;
+    return;
+  }
+  const initial = state.me.name.charAt(0).toUpperCase();
+  box.innerHTML = list.map((a, i) => {
+    const m = meta(a.activity_type);
+    const load = Math.round(a.duration_min * a.rpe);
+    const effortColor = a.rpe >= 8 ? "var(--danger)" : a.rpe >= 6 ? "var(--accent)" : "var(--accent2)";
+    // Distance and pace only exist for distance sports; strength work and
+    // matches show time, load and effort instead.
+    const stats = (a.distance_km ? [
+      ["Distance", `${a.distance_km} km`],
+      ["Pace", `${formatPace(a.duration_min / a.distance_km)} /km`],
+    ] : [
+      ["Category", CATEGORIES[m.cat].label],
+    ]).concat([
+      ["Time", formatTime(a.duration_min)],
+      ["Load", String(load)],
+    ]);
+    return `
+    <div class="acard" style="animation-delay:${Math.min(i * 0.04, 0.4)}s">
+      <div class="ac-head">
+        <div class="ac-av">${initial}</div>
+        <div class="ac-who">
+          <b>${escapeHtml(state.me.name)}</b>
+          <span>${longDate(a.date)} · Manual entry</span>
+        </div>
+        <button class="ac-menu-btn" onclick="openCardMenu(event, ${a.id})">${ic("dots")}</button>
+      </div>
+      <div class="ac-body">
+        <div class="ac-sport">${ic(m.icon)}</div>
+        <div style="min-width:0">
+          <div class="ac-title">${sessionTitle(a)}</div>
+          ${a.notes ? `<div class="ac-desc">${escapeHtml(a.notes)}</div>` : ""}
+        </div>
+      </div>
+      <div class="ac-stats">
+        ${stats.map(([l, v]) => `<div><div class="sl">${l}</div><div class="sv">${v}</div></div>`).join("")}
+      </div>
+      <div class="effort-strip">
+        <div class="effort-track"><div class="effort-fill" style="width:${a.rpe * 10}%; background:${effortColor}"></div></div>
+        <div class="effort-cap">
+        <span>Effort ${a.rpe}/10${a.avg_hr ? ` · <span class="hr-badge">${ic("heart")}${a.avg_hr} bpm</span>` : ""}</span>
+        <span>${RPE_HINTS[a.rpe]}</span>
+      </div>
+      </div>
+      <div class="ac-foot">
+        <button class="ghost-icon" onclick="openLogModal(${a.id})">${ic("pencil")} Edit</button>
+        <button class="ghost-icon del" onclick="confirmDelete(${a.id})">${ic("trash")} Delete</button>
+      </div>
+    </div>`;
+  }).join("");
+}
+
+// Per-card dropdown, positioned next to the button that opened it.
+function openCardMenu(e, id) {
+  e.stopPropagation();
+  const r = e.currentTarget.getBoundingClientRect();
+  $("sheet-root").innerHTML = `
+    <div class="sheet" style="top:${r.bottom + 6}px; left:${Math.max(8, r.right - 150)}px">
+      <button onclick="closeSheet(); openLogModal(${id})">${ic("pencil")} Edit session</button>
+      <button onclick="closeSheet(); duplicateActivity(${id})">${ic("copy")} Duplicate to today</button>
+      <button class="danger" onclick="closeSheet(); confirmDelete(${id})">${ic("trash")} Delete session</button>
+    </div>`;
+}
+
+async function duplicateActivity(id) {
+  const a = state.activities.find(x => x.id === id);
+  await api("POST", "/activities", {
+    activity_type: a.activity_type, distance_km: a.distance_km, duration_min: a.duration_min,
+    rpe: a.rpe, avg_hr: a.avg_hr, date: new Date().toISOString().slice(0, 10), notes: a.notes,
+  });
+  toast("Session copied to today"); refreshAll();
+}
+
+function renderMiniList() {
+  const recent = [...state.activities].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 5);
+  $("mini-list").innerHTML = recent.length
+    ? recent.map(a => `<div><span>${ic(meta(a.activity_type).icon)} ${sessionTitle(a)}</span><span>${a.distance_km ? a.distance_km + " km" : formatTime(a.duration_min)} · ${formatDate(a.date)}</span></div>`).join("")
+    : `<div><span>No recent activities found</span><span></span></div>`;
+}
+
+/* ---------- right rail ---------- */
+function setWeeks(n, btn) {
+  state.weeks = n;
+  document.querySelectorAll(".range-row button").forEach(b => b.classList.remove("on"));
+  btn.classList.add("on");
+  api("GET", "/analytics/weekly?weeks=" + n).then(w => {
+    state.weekly = w; renderChart(); renderThisWeek(); renderLoadCard();
+  });
+}
+
+function renderChart() {
+  const labels = state.weekly.map(w => w.week_start.slice(5));
+  if (chart) chart.destroy();
+  // Bars = distance, line = training load (duration x RPE): volume and
+  // stress on one chart, like professional training platforms.
+  chart = new Chart($("weekly-chart"), {
+    data: {
+      labels,
+      datasets: [
+        { type: "bar", label: "km", data: state.weekly.map(w => w.distance_km), backgroundColor: "#ff6b35", borderRadius: 5, yAxisID: "y" },
+        { type: "line", label: "load", data: state.weekly.map(w => w.training_load), borderColor: "#4ecdc4", backgroundColor: "#4ecdc4", tension: .35, pointRadius: 2, yAxisID: "y1" },
+      ],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      animation: { duration: 800, easing: "easeOutQuart" },
+      plugins: { legend: { labels: { color: "#8b98a5", boxWidth: 12, font: { size: 11 } } } },
+      scales: {
+        x: { ticks: { color: "#8b98a5", font: { size: 10 } }, grid: { display: false } },
+        y: { ticks: { color: "#8b98a5", font: { size: 10 } }, grid: { color: "#263241" } },
+        y1: { position: "right", ticks: { color: "#8b98a5", font: { size: 10 } }, grid: { drawOnChartArea: false } },
+      },
+    },
+  });
+}
+
+function renderThisWeek() {
+  const w = state.weekly, cur = w[w.length - 1], prev = w[w.length - 2];
+  if (!cur) return;
+  $("w-km").textContent = cur.distance_km + " km";
+  $("w-acts").textContent = cur.activities;
+  $("w-load").textContent = cur.training_load;
+  if (!prev || !prev.distance_km) { $("w-delta").textContent = "–"; $("w-delta").style.color = "var(--muted)"; return; }
+  const pct = Math.round(((cur.distance_km - prev.distance_km) / prev.distance_km) * 100);
+  $("w-delta").textContent = (pct >= 0 ? "↑ +" : "↓ ") + pct + "%";
+  $("w-delta").style.color = pct >= 0 ? "var(--accent2)" : "var(--accent)";
+}
+
+function renderRecords() {
+  const r = state.records;
+  const row = (label, rec, fmt) => rec
+    ? `<div class="kv"><span>${label}<br><span style="font-size:11px">${meta(rec.activity_type).label} · ${rec.date}</span></span><b class="teal">${fmt(rec)}</b></div>`
+    : `<div class="kv"><span>${label}</span><b>–</b></div>`;
+  $("records-list").innerHTML =
+    row("Longest distance", r.longest_distance, x => x.distance_km + " km") +
+    row("Longest session", r.longest_duration, x => formatTime(x.duration_min)) +
+    row("Best pace", r.best_pace, x => formatPace(x.pace_min_per_km) + " /km");
+}
+
+/* ---------- log / edit modal ---------- */
+const RPE_HINTS = {
+  1: "Very easy", 2: "Very easy", 3: "Easy — full conversation",
+  4: "Moderate", 5: "Moderate — comfortable", 6: "Steady — breathing noticeably",
+  7: "Hard", 8: "Hard — short sentences only", 9: "Very hard — near max",
+  10: "Max effort — all out",
+};
+
+let modalType = "run", modalRpe = null, modalCat = "distance";
+
+function openLogModal(id) {
+  const a = id ? state.activities.find(x => x.id === id) : null;
+  state.editingId = id || null;
+  modalType = a ? a.activity_type : "run";
+  modalCat = meta(modalType).cat;
+  modalRpe = a ? a.rpe : null;
+  const today = new Date().toISOString().slice(0, 10);
+
+  openModal(`
+    <div class="modal-head"><h3>${a ? "Edit session" : "Log a session"}</h3><button onclick="closeModal()" aria-label="Close">${ic("x")}</button></div>
+    <p class="sub">${a ? "Update anything below." : "Pick a category, then a sport."}</p>
+
+    <div class="cat-pick" id="cat-pick">
+      ${Object.keys(CATEGORIES).map(c => `
+        <button class="${c === modalCat ? "on" : ""}" onclick="pickCat('${c}')">
+          <span class="ci">${ic(CATEGORIES[c].icon)}</span>${CATEGORIES[c].label}
+        </button>`).join("")}
+    </div>
+    <div class="sport-pick" id="sport-pick"></div>
+
+    <div class="mgrid" style="margin-top:14px">
+      <div id="dist-field"><label>Distance (km)</label>
+        ${numField("m-dist", { value: a && a.distance_km ? a.distance_km : "", min: 0, max: 1000, step: 0.5, ph: "5.0", oninput: "updateRpeSuggestion()" })}
+      </div>
+      <div><label>Duration (min)</label>
+        ${numField("m-dur", { value: a ? a.duration_min : "", min: 0, max: 1440, step: 5, ph: "45", oninput: "updateRpeSuggestion()" })}
+      </div>
+    </div>
+
+    <label style="margin-top:14px">Effort (RPE)</label>
+    <div class="rpe-row" id="rpe-row">
+      ${Array.from({ length: 10 }, (_, i) => `<button class="${a && a.rpe === i + 1 ? "on" : ""}" onclick="pickRpe(${i + 1}, this)">${i + 1}</button>`).join("")}
+    </div>
+    <div class="rpe-hint" id="rpe-hint">${a ? RPE_HINTS[a.rpe] : "How hard did it feel?"}</div>
+    <div id="rpe-suggest-box"></div>
+
+    <div class="mgrid" style="margin-top:8px">
+      <div><label>Avg heart rate <span class="opt">optional</span></label>
+        ${numField("m-hr", { value: a && a.avg_hr ? a.avg_hr : "", min: 30, max: 230, step: 1, ph: "bpm", oninput: "updateRpeSuggestion()" })}
+      </div>
+      <div><label>Date</label><input id="m-date" type="date" value="${a ? a.date : today}"></div>
+    </div>
+
+    <label style="margin-top:12px">Notes</label>
+    <input id="m-notes" value="${a && a.notes ? escapeHtml(a.notes) : ""}" placeholder="optional">
+
+    <div class="error-msg" id="m-error"></div>
+    <button class="btn" onclick="saveActivity()">${a ? "Save changes" : "Log session"}</button>`);
+
+  renderSportPick();
+}
+
+function pickCat(c) {
+  modalCat = c;
+  document.querySelectorAll("#cat-pick button").forEach((b, i) =>
+    b.classList.toggle("on", Object.keys(CATEGORIES)[i] === c));
+  // Selecting a new category selects its first sport.
+  if (meta(modalType).cat !== c) modalType = sportsIn(c)[0];
+  renderSportPick();
+}
+
+// The distance field only exists for distance sports - a bench press
+// session has no kilometres, and the API rejects one if sent.
+function renderSportPick() {
+  $("sport-pick").innerHTML = sportsIn(modalCat).map(t => `
+    <button class="${t === modalType ? "on" : ""}" onclick="pickType('${t}')">
+      <span class="ti">${ic(SPORTS_META[t].icon)}</span>${SPORTS_META[t].label}
+    </button>`).join("");
+  $("dist-field").classList.toggle("hidden", !isDistance(modalType));
+  (isDistance(modalType) ? $("m-dist") : $("m-dur")).focus();
+  updateRpeSuggestion();
+}
+
+function pickType(t) {
+  modalType = t;
+  renderSportPick();
+  updateRpeSuggestion();
+}
+
+/* ---------- estimated RPE ----------
+   RPE is subjective by definition. The automated equivalents all need
+   hardware, so there are two routes here:
+
+   1. Heart rate (best evidence, works for every sport). Karvonen's heart
+      rate reserve puts the session between resting and max HR, which is
+      what actually tracks internal load. Falls back to a plain %HRmax if
+      no resting HR is on file.
+   2. Pace relative to threshold (distance sports only, no hardware). The
+      API estimates threshold pace from history, or supplies a default.
+
+   Both are suggestions to nudge the slider, never a replacement for how
+   it felt - neither knows about heat, sleep, altitude or fatigue. */
+
+function estimatedMaxHr() {
+  const me = state.me || {};
+  if (me.max_hr) return { value: me.max_hr, source: "your recorded max" };
+  if (me.birth_year) {
+    const age = new Date().getFullYear() - me.birth_year;
+    // Tanaka (2001) is more accurate across ages than the old 220-age.
+    return { value: Math.round(208 - 0.7 * age), source: `age ${age}, Tanaka formula` };
+  }
+  return null;
+}
+
+function suggestedRpe() {
+  const dur = parseFloat($("m-dur") ? $("m-dur").value : 0);
+
+  // --- 1. heart rate, if the user entered one and we know their max ---
+  const hr = parseFloat($("m-hr") ? $("m-hr").value : 0);
+  const max = estimatedMaxHr();
+  if (hr && max && hr <= max.value + 10) {
+    const rest = (state.me || {}).resting_hr;
+    let pct, method;
+    if (rest && max.value > rest) {
+      pct = (hr - rest) / (max.value - rest);          // heart rate reserve
+      method = "heart rate reserve";
+    } else {
+      pct = hr / max.value;                            // plain %HRmax
+      method = "% of max HR";
+    }
+    // %HRR maps near 1:1 onto the 10-point scale; %HRmax needs shifting
+    // because even resting sits around 40% of max.
+    const rpe = rest ? Math.round(pct * 10) : Math.round((pct * 100 - 50) / 5);
+    return {
+      rpe: Math.max(1, Math.min(10, rpe)),
+      via: "hr",
+      detail: `${Math.round(pct * 100)}% ${method} (max ~${max.value} bpm from ${max.source})`,
+    };
+  }
+
+  // --- 2. pace against threshold, for distance sports ---
+  if (!isDistance(modalType)) return null;
+  const th = (state.thresholds || {})[modalType];
+  const dist = parseFloat($("m-dist") ? $("m-dist").value : 0);
+  if (!th || !dist || !dur || dist < 0.3) return null;
+
+  const intensity = th.threshold_pace_min_per_km / (dur / dist);
+  const rpe = Math.round(1 + 9 * (intensity - 0.55) / (1.05 - 0.55));
+  return {
+    rpe: Math.max(1, Math.min(10, rpe)),
+    via: "pace",
+    detail: `${intensity.toFixed(2)}× your ${formatPace(th.threshold_pace_min_per_km)}/km threshold`,
+    isDefault: th.is_default,
+  };
+}
+
+function updateRpeSuggestion() {
+  const box = $("rpe-suggest-box");
+  if (!box) return;
+  const s = suggestedRpe();
+
+  // Nothing to suggest for a duration-only sport without heart rate:
+  // offer the wearable route instead.
+  if (!s) {
+    const noProfile = !estimatedMaxHr();
+    box.innerHTML = (!isDistance(modalType) && noProfile)
+      ? `<div class="rpe-suggest hint">
+           ${ic("heart")}<span>Wearing a monitor? Add your heart-rate profile and we'll suggest an effort score.</span>
+           <button onclick="openProfileModal()">Set up</button>
+         </div>`
+      : "";
+    return;
+  }
+  if (s.rpe === modalRpe) { box.innerHTML = ""; return; }
+
+  box.innerHTML = `
+    <div class="rpe-suggest">
+      ${ic(s.via === "hr" ? "heart" : "trend")}
+      <span>${s.via === "hr" ? "Heart rate" : "Pace"} suggests <b>RPE ${s.rpe}</b><br>
+        <small>${s.detail}${s.isDefault ? " · typical default, improves once you log a longer session" : ""}</small>
+      </span>
+      <button onclick="applySuggestedRpe(${s.rpe})">Use it</button>
+    </div>`;
+}
+
+function applySuggestedRpe(n) {
+  const btn = document.querySelectorAll("#rpe-row button")[n - 1];
+  if (btn) pickRpe(n, btn);
+}
+
+/* ---------- heart-rate profile ---------- */
+function openProfileModal() {
+  const me = state.me || {};
+  const est = estimatedMaxHr();
+  openModal(`
+    <div class="modal-head"><h3>Heart-rate profile</h3><button onclick="closeModal()" aria-label="Close">${ic("x")}</button></div>
+    <p class="sub">For users with a wearable. Everything here is optional — without it the app still works from pace and perceived effort.</p>
+
+    <label>Year of birth <span class="opt">used to estimate max HR</span></label>
+    ${numField("p-birth", { value: me.birth_year || "", min: 1900, max: new Date().getFullYear(), step: 1, ph: "2004" })}
+
+    <label style="margin-top:12px">Resting heart rate <span class="opt">measured on waking</span></label>
+    ${numField("p-rest", { value: me.resting_hr || "", min: 25, max: 120, step: 1, ph: "bpm" })}
+
+    <label style="margin-top:12px">Max heart rate <span class="opt">leave blank to estimate from age</span></label>
+    ${numField("p-max", { value: me.max_hr || "", min: 100, max: 230, step: 1, ph: est ? String(est.value) : "bpm" })}
+
+    <div class="hr-explain">
+      ${ic("pulse")}
+      <span>With a resting HR we use <b>heart rate reserve</b> (Karvonen), which places a session between your resting and max rather than as a raw percentage — the more accurate of the two. Without it we fall back to % of max HR.</span>
+    </div>
+
+    <div class="error-msg" id="p-error"></div>
+    <button class="btn" onclick="saveProfile()">Save profile</button>`);
+  $("p-birth").focus();
+}
+
+async function saveProfile() {
+  const num = id => { const v = parseInt($(id).value); return Number.isFinite(v) ? v : null; };
+  try {
+    state.me = await api("PUT", "/me/profile", {
+      birth_year: num("p-birth"), resting_hr: num("p-rest"), max_hr: num("p-max"),
+    });
+    closeModal();
+    const est = estimatedMaxHr();
+    toast(est ? `Profile saved — max HR ~${est.value} bpm` : "Profile saved");
+  } catch (e) { $("p-error").textContent = e.message; }
+}
+function pickRpe(n, btn) {
+  modalRpe = n;
+  document.querySelectorAll("#rpe-row button").forEach(b => b.classList.remove("on"));
+  btn.classList.add("on");
+  $("rpe-hint").textContent = RPE_HINTS[n];
+  updateRpeSuggestion();
+}
+
+async function saveActivity() {
+  const needsDistance = isDistance(modalType);
+  const payload = {
+    activity_type: modalType,
+    distance_km: needsDistance ? parseFloat($("m-dist").value) : null,
+    duration_min: parseFloat($("m-dur").value),
+    rpe: modalRpe,
+    avg_hr: parseInt($("m-hr").value) || null,
+    date: $("m-date").value || null,
+    notes: $("m-notes").value || null,
+  };
+  if (!payload.duration_min || !payload.rpe) {
+    $("m-error").textContent = "Duration and effort are both required."; return;
+  }
+  if (needsDistance && !payload.distance_km) {
+    $("m-error").textContent = `${meta(modalType).label} needs a distance in km.`; return;
+  }
+  try {
+    // Same modal handles create (POST) and edit (PUT) - editingId decides.
+    if (state.editingId) await api("PUT", "/activities/" + state.editingId, payload);
+    else await api("POST", "/activities", payload);
+    closeModal();
+    toast(state.editingId ? "Session updated" : "Session logged 💪");
+    refreshAll();
+  } catch (e) { $("m-error").textContent = e.message; }
+}
+
+function confirmDelete(id) {
+  const a = state.activities.find(x => x.id === id);
+  openModal(`
+    <div class="modal-head"><h3>Delete this session?</h3><button onclick="closeModal()" aria-label="Close">${ic("x")}</button></div>
+    <p class="sub">${sessionTitle(a)} · ${a.distance_km ? a.distance_km + " km" : formatTime(a.duration_min)} · ${formatDate(a.date)}. This can't be undone.</p>
+    <div class="modal-actions">
+      <button class="btn-ghost" onclick="closeModal()">Keep it</button>
+      <button class="danger-btn" onclick="doDelete(${id})">Delete</button>
+    </div>`);
+}
+
+async function doDelete(id) {
+  await api("DELETE", "/activities/" + id);
+  closeModal(); toast("Session deleted"); refreshAll();
+}
+
+/* ---------- account deletion (5-day grace period) ---------- */
+function renderDeletionNotice() {
+  const me = state.me;
+  if (!me.delete_requested_at) { $("deletion-notice").innerHTML = ""; return; }
+  const when = new Date(me.delete_requested_at);
+  when.setDate(when.getDate() + 5);
+  $("deletion-notice").innerHTML = `
+    <div class="deletion-banner">
+      <span>⚠️ This account and all its data will be <b>permanently deleted on ${when.toLocaleDateString()}</b>.</span>
+      <button class="btn-ghost" style="padding:8px 18px; font-size:13px" onclick="cancelDeletion()">Cancel deletion</button>
+    </div>`;
+}
+
+function openDeleteModal() {
+  if (state.me.delete_requested_at) { toast("Deletion is already scheduled", true); return; }
+  openModal(`
+    <div class="modal-head"><h3>Delete your account</h3><button onclick="closeModal()" aria-label="Close">${ic("x")}</button></div>
+    <p class="sub">This removes your profile and every logged session. You'll have <b style="color:var(--text)">5 days</b> to cancel before it becomes permanent.</p>
+    <label>Confirm your password</label>
+    <input id="del-password" type="password" placeholder="required">
+    <div class="error-msg" id="del-error"></div>
+    <div class="modal-actions">
+      <button class="btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="danger-btn" onclick="requestDeletion()">Schedule deletion</button>
+    </div>`);
+}
+
+async function requestDeletion() {
+  const password = $("del-password").value;
+  if (!password) { $("del-error").textContent = "Enter your password first."; return; }
+  try {
+    state.me = await api("POST", "/me/delete", { password });
+    closeModal(); renderDeletionNotice(); toast("Account scheduled for deletion");
+  } catch (e) { $("del-error").textContent = e.message; }
+}
+
+async function cancelDeletion() {
+  state.me = await api("POST", "/me/cancel-deletion");
+  renderDeletionNotice(); toast("Deletion cancelled — welcome back");
+}
+
+/* ---------- helpers ---------- */
+function formatPace(minPerKm) {
+  const m = Math.floor(minPerKm);
+  const s = Math.round((minPerKm - m) * 60);
+  return m + ":" + String(s).padStart(2, "0");
+}
+
+// 95 minutes reads better as "1h 35m" than as a raw number.
+function formatTime(min) {
+  const h = Math.floor(min / 60), m = Math.round(min % 60);
+  return h ? `${h}h ${m}m` : `${m}m`;
+}
+
+// Recent dates read better as "Today" / "3 days ago" than as ISO strings.
+function formatDate(iso) {
+  const d = new Date(iso + "T00:00:00");
+  const days = Math.round((new Date().setHours(0,0,0,0) - d) / 86400000);
+  if (days === 0) return "Today";
+  if (days === 1) return "Yesterday";
+  if (days < 7) return days + " days ago";
+  return d.toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
+}
+
+function longDate(iso) {
+  return new Date(iso + "T00:00:00").toLocaleDateString(undefined, { day: "numeric", month: "long", year: "numeric" });
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
+function scrollToEl(id, btn) {
+  if (btn) {
+    document.querySelectorAll(".bar-nav button").forEach(b => b.classList.remove("on"));
+    btn.classList.add("on");
+  }
+  $(id).scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+// Returning visitors with a valid token skip the landing page; otherwise
+// give the browser a chance to sign them in from a saved credential.
+if (localStorage.getItem("token")) enterApp().catch(logout);
+else if (localStorage.getItem("rememberedEmail")) tryAutoSignIn();
+</script>
+</body>
+</html>
