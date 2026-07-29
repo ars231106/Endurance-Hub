@@ -1,6 +1,6 @@
 # EnduranceHub
 
-[![CI](https://github.com/YOUR_USERNAME/Endurance-Hub/actions/workflows/ci.yml/badge.svg)](https://github.com/YOUR_USERNAME/Endurance-Hub/actions/workflows/ci.yml)
+[![CI](https://github.com/ars231106/Endurance-Hub/actions/workflows/ci.yml/badge.svg)](https://github.com/ars231106/Endurance-Hub/actions/workflows/ci.yml)
 
 An endurance training analytics platform for runners, cyclists and endurance athletes. Log workouts, track weekly training load, monitor streaks and break personal records — inspired by Strava and Runna, built from scratch.
 
