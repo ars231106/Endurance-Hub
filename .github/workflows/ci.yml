@@ -88,7 +88,9 @@ jobs:
           python3 - <<'PY'
           import re, pathlib
           html = pathlib.Path("frontend/index.html").read_text(encoding="utf-8")
-          script = re.search(r"<script>\n(.*)</script>", html, re.S).group(1)
+          # The page has more than one <script> (a tiny pre-paint theme
+          # setter in <head>), so take the largest block - the app itself.
+          script = max(re.findall(r"<script>(.*?)</script>", html, re.S), key=len)
           pathlib.Path("/tmp/app.js").write_text(script)
           PY
           node --check /tmp/app.js
@@ -97,7 +99,9 @@ jobs:
           python3 - <<'PY'
           import re, pathlib, sys
           html = pathlib.Path("frontend/index.html").read_text(encoding="utf-8")
-          script = re.search(r"<script>\n(.*)</script>", html, re.S).group(1)
+          # The page has more than one <script> (a tiny pre-paint theme
+          # setter in <head>), so take the largest block - the app itself.
+          script = max(re.findall(r"<script>(.*?)</script>", html, re.S), key=len)
           defined = set(re.findall(r'<symbol id="i-([\w-]+)"', html))
           used = (set(re.findall(r'<use href="#i-([\w-]+)"', html))
                   | set(re.findall(r'\bic\("([\w-]+)"', script))
@@ -112,7 +116,9 @@ jobs:
           python3 - <<'PY'
           import re, pathlib, sys
           html = pathlib.Path("frontend/index.html").read_text(encoding="utf-8")
-          script = re.search(r"<script>\n(.*)</script>", html, re.S).group(1)
+          # The page has more than one <script> (a tiny pre-paint theme
+          # setter in <head>), so take the largest block - the app itself.
+          script = max(re.findall(r"<script>(.*?)</script>", html, re.S), key=len)
           handlers = (set(re.findall(r'onclick="(\w+)\(', html))
                       | set(re.findall(r'onchange="(\w+)\(', html))
                       | set(re.findall(r'oninput="(\w+)\(', html)))

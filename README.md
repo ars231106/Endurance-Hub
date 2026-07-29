@@ -2,6 +2,10 @@
 
 [![CI](https://github.com/ars231106/Endurance-Hub/actions/workflows/ci.yml/badge.svg)](https://github.com/ars231106/Endurance-Hub/actions/workflows/ci.yml)
 
+**Live demo:** [endurancehub-dyq3.onrender.com](https://endurancehub-dyq3.onrender.com) · **API docs:** [/docs](https://endurancehub-dyq3.onrender.com/docs)
+
+> Hosted on a free tier that sleeps when idle — the first request may take up to a minute to wake.
+
 An endurance training analytics platform for runners, cyclists and endurance athletes. Log workouts, track weekly training load, monitor streaks and break personal records — inspired by Strava and Runna, built from scratch.
 
 ## Features

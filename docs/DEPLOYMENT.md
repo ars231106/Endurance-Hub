@@ -1,5 +1,7 @@
 # Deployment
 
+**Live:** https://endurancehub-dyq3.onrender.com (Render, Oregon — web service + PostgreSQL 18)
+
 The app ships as a single Docker image serving both the API and the frontend, so there's one service to deploy rather than two.
 
 ## Continuous integration

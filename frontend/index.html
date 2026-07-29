@@ -6,11 +6,73 @@
 <title>EnduranceHub — Training analytics that actually explain your training</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
 <style>
+  /* ---------- theming ----------
+     Dark is the base. The light palette is applied either when the OS asks
+     for it and the user hasn't overridden the choice, or when they pick
+     light explicitly - which is what makes the three-way System / Light /
+     Dark switch work with one attribute on <html>. */
   :root {
     --bg: #0b0f14; --bg-alt: #0e141b; --card: #151d26; --card2: #1c2733; --border: #263241;
     --text: #eef3f8; --muted: #8b98a5; --accent: #ff6b35; --accent2: #4ecdc4; --purple: #a78bfa;
     --danger: #e74c3c; --radius: 14px; --maxw: 1140px;
+    /* tokens that differ per theme beyond the palette itself */
+    --bar-bg: rgba(11,15,20,.78);
+    --shine: rgba(255,255,255,.07);
+    --shadow-sm: 0 8px 22px rgba(0,0,0,.40);
+    --shadow-md: 0 14px 36px rgba(0,0,0,.45);
+    --shadow-lg: 0 24px 60px rgba(0,0,0,.50);
+    --hover-bg: #222e3b;
+    --on-accent2: #04241f;
+    --orb-opacity: .16;
+    --grid-dot: rgba(139,152,165,.14);
+    --overlay: rgba(5,8,11,.78);
+    --grad: linear-gradient(90deg, #ff6b35, #ff4d8d, #a78bfa, #38d6c8, #ff6b35);
   }
+
+  :root[data-theme="light"] {
+    --bg: #f4f6f9; --bg-alt: #ffffff; --card: #ffffff; --card2: #eef2f7; --border: #dbe2ea;
+    --text: #16202b; --muted: #5c6874; --accent: #e05520; --accent2: #0e9384; --purple: #7c3aed;
+    --danger: #d13c33;
+    --bar-bg: rgba(255,255,255,.82);
+    --shine: rgba(0,0,0,.04);
+    --shadow-sm: 0 6px 18px rgba(20,30,45,.08);
+    --shadow-md: 0 12px 30px rgba(20,30,45,.10);
+    --shadow-lg: 0 20px 48px rgba(20,30,45,.14);
+    --hover-bg: #e3e9f1;
+    --on-accent2: #ffffff;
+    --orb-opacity: .10;
+    --grid-dot: rgba(92,104,116,.16);
+    --overlay: rgba(22,32,43,.45);
+    /* Deeper stops so the headline still reads against a white page. */
+    --grad: linear-gradient(90deg, #e05520, #d61f6b, #6d28d9, #0e9384, #e05520);
+  }
+
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) {
+      --bg: #f4f6f9; --bg-alt: #ffffff; --card: #ffffff; --card2: #eef2f7; --border: #dbe2ea;
+      --text: #16202b; --muted: #5c6874; --accent: #e05520; --accent2: #0e9384; --purple: #7c3aed;
+      --danger: #d13c33;
+      --bar-bg: rgba(255,255,255,.82);
+      --shine: rgba(0,0,0,.04);
+      --shadow-sm: 0 6px 18px rgba(20,30,45,.08);
+      --shadow-md: 0 12px 30px rgba(20,30,45,.10);
+      --shadow-lg: 0 20px 48px rgba(20,30,45,.14);
+      --hover-bg: #e3e9f1;
+      --on-accent2: #ffffff;
+      --orb-opacity: .10;
+      --grid-dot: rgba(92,104,116,.16);
+      --overlay: rgba(22,32,43,.45);
+      --grad: linear-gradient(90deg, #e05520, #d61f6b, #6d28d9, #0e9384, #e05520);
+    }
+  }
+
+  /* Theme switch: three segments, one active. */
+  .theme-switch { display: flex; gap: 2px; padding: 3px; background: var(--card); border: 1px solid var(--border); border-radius: 30px; }
+  .theme-switch button { display: flex; align-items: center; justify-content: center; width: 30px; height: 26px;
+    background: none; border: none; border-radius: 30px; color: var(--muted); cursor: pointer; transition: all .2s; }
+  .theme-switch button:hover { color: var(--text); background: var(--card2); }
+  .theme-switch button.on { background: var(--accent); color: #fff; }
+  .theme-switch .ic { width: 15px; height: 15px; }
   * { margin: 0; padding: 0; box-sizing: border-box; }
   html { scroll-behavior: smooth; }
   body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; overflow-x: hidden; line-height: 1.5; }
@@ -54,11 +116,11 @@
   ::-webkit-scrollbar-button { display: none; }
 
   .btn { display: inline-block; padding: 14px 30px; background: linear-gradient(135deg, var(--accent), #ff8f5e); color: #fff; border: none; border-radius: 10px; font-size: 15px; font-weight: 600; cursor: pointer; transition: transform .2s, box-shadow .2s; }
-  .btn:hover { transform: translateY(-2px); box-shadow: 0 10px 28px rgba(255,107,53,.35); }
+  .btn:hover { transform: translateY(-2px); box-shadow: 0 10px 28px rgba(224,85,32,.32); }
   .btn-ghost { display: inline-block; padding: 13px 28px; background: transparent; color: var(--text); border: 1px solid var(--border); border-radius: 10px; font-size: 15px; cursor: pointer; transition: border-color .2s, transform .2s; }
   .btn-ghost:hover { border-color: var(--accent2); transform: translateY(-2px); }
 
-  .orb { position: fixed; border-radius: 50%; filter: blur(100px); opacity: .16; z-index: 0; pointer-events: none; }
+  .orb { position: fixed; border-radius: 50%; filter: blur(100px); opacity: var(--orb-opacity); z-index: 0; pointer-events: none; }
   .orb1 { width: 460px; height: 460px; background: var(--accent); top: -150px; left: -120px; animation: drift1 20s ease-in-out infinite alternate; }
   .orb2 { width: 400px; height: 400px; background: var(--accent2); top: 45%; right: -140px; animation: drift2 24s ease-in-out infinite alternate; }
   @keyframes drift1 { to { transform: translate(80px, 70px) scale(1.15); } }
@@ -68,7 +130,7 @@
   .reveal.visible { opacity: 1; transform: none; }
 
   /* ---------- landing nav ---------- */
-  nav { position: fixed; top: 0; left: 0; right: 0; display: flex; justify-content: space-between; align-items: center; padding: 15px 5vw; background: rgba(11,15,20,.72); backdrop-filter: blur(16px); border-bottom: 1px solid rgba(38,50,65,.6); z-index: 60; }
+  nav { position: fixed; top: 0; left: 0; right: 0; display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 15px 5vw; background: var(--bar-bg); backdrop-filter: blur(16px); border-bottom: 1px solid var(--border); z-index: 60; }
   .logo { font-size: 21px; font-weight: 800; letter-spacing: -.4px; }
   .logo span { color: var(--accent); }
   .nav-links { display: flex; gap: 26px; font-size: 14px; color: var(--muted); }
@@ -79,12 +141,19 @@
   @media (max-width: 900px) { .nav-links { display: none; } }
 
   /* ---------- hero ---------- */
-  .hero { position: relative; z-index: 1; display: grid; grid-template-columns: 1.05fr .95fr; gap: 50px; align-items: center; max-width: var(--maxw); margin: 0 auto; padding: 145px 5vw 60px; }
+  .hero { position: relative; z-index: 1; display: grid; grid-template-columns: 1.05fr .95fr; gap: 50px; align-items: center; max-width: var(--maxw); margin: 0 auto; padding: 150px 5vw 70px; }
   @media (max-width: 940px) { .hero { grid-template-columns: 1fr; text-align: center; padding-top: 120px; } .hero-visual { order: 2; } }
   .eyebrow { display: inline-block; padding: 7px 16px; border: 1px solid var(--border); border-radius: 30px; font-size: 13px; color: var(--accent2); margin-bottom: 22px; }
   .hero h1 { font-size: clamp(36px, 5.2vw, 60px); line-height: 1.06; font-weight: 800; letter-spacing: -1.6px; }
-  .grad-text { background: linear-gradient(90deg, var(--accent), var(--accent2), var(--purple), var(--accent)); background-size: 300% auto; -webkit-background-clip: text; background-clip: text; color: transparent; animation: shimmer 7s linear infinite; }
-  @keyframes shimmer { to { background-position: 300% center; } }
+  /* Orange blended straight into teal passes through a muddy grey at the
+     midpoint, which is what washed the headline out. Routing the ramp
+     around the colour wheel instead - orange, pink, violet, teal - keeps
+     every intermediate tone saturated. First and last stops match so the
+     scroll loops seamlessly. */
+  .grad-text { background-image: var(--grad); background-size: 200% auto;
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    animation: shimmer 5s linear infinite; }
+  @keyframes shimmer { to { background-position: 200% center; } }
   .hero p.lead { color: var(--muted); font-size: 17px; max-width: 520px; margin: 20px 0 30px; line-height: 1.65; }
   @media (max-width: 940px) { .hero p.lead { margin-left: auto; margin-right: auto; } }
   .hero-cta { display: flex; gap: 12px; flex-wrap: wrap; }
@@ -92,7 +161,9 @@
   .hero-note { color: var(--muted); font-size: 13px; margin-top: 16px; }
 
   .hero-visual { position: relative; }
-  .mock { background: var(--card); border: 1px solid var(--border); border-radius: 18px; padding: 22px; box-shadow: 0 24px 60px rgba(0,0,0,.5); animation: float 6s ease-in-out infinite; }
+  /* Extra top padding gives the badge that overlaps the top edge somewhere
+     to sit without covering the "Mon - Sun" label in the header row. */
+  .mock { position: relative; z-index: 1; background: var(--card); border: 1px solid var(--border); border-radius: 18px; padding: 38px 22px 22px; box-shadow: var(--shadow-lg); animation: float 6s ease-in-out infinite; }
   @keyframes float { 50% { transform: translateY(-12px); } }
   .mock-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; font-size: 13px; color: var(--muted); }
   .mock-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 18px; }
@@ -102,10 +173,19 @@
   .mock-bars { display: flex; align-items: flex-end; gap: 8px; height: 110px; padding-top: 8px; }
   .mock-bars div { flex: 1; background: linear-gradient(180deg, var(--accent), rgba(255,107,53,.35)); border-radius: 5px 5px 0 0; animation: grow 1.4s cubic-bezier(.2,.8,.3,1) backwards; }
   @keyframes grow { from { height: 0 !important; } }
-  .float-pill { position: absolute; background: var(--card); border: 1px solid var(--border); border-radius: 30px; padding: 9px 16px; font-size: 13px; font-weight: 600; box-shadow: 0 10px 30px rgba(0,0,0,.45); }
-  .fp1 { top: -14px; right: -6px; color: var(--accent2); animation: float 5s ease-in-out infinite .6s; }
-  .fp2 { bottom: -16px; left: -10px; color: var(--accent); animation: float 5.6s ease-in-out infinite .3s; }
-  @media (max-width: 940px) { .float-pill { display: none; } }
+  /* Floating feature badges. z-index puts them above the card, which
+     otherwise paints over them by virtue of coming later in the DOM.
+     The top badge clears the card's header entirely rather than sitting
+     on its edge - at top: -16px it covered the "Mon - Sun" label. */
+  .float-pill { position: absolute; z-index: 2; display: flex; align-items: center; gap: 8px; white-space: nowrap;
+    background: var(--card2); border: 1px solid var(--border); border-radius: 30px; padding: 9px 17px;
+    font-size: 13px; font-weight: 600; box-shadow: var(--shadow-sm);
+    transition: opacity .35s ease, transform .35s ease; }
+  .float-pill .ic { width: 15px; height: 15px; }
+  .float-pill.swapping { opacity: 0; transform: translateY(-6px); }
+  .fp1 { top: -18px; right: 6px; color: var(--accent2); }
+  .fp2 { bottom: -18px; left: 6px; color: var(--accent); }
+  @media (max-width: 1060px) { .float-pill { display: none; } }
 
   .trust { position: relative; z-index: 1; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); background: var(--bg-alt); }
   .trust-inner { max-width: var(--maxw); margin: 0 auto; padding: 26px 5vw; display: flex; gap: 44px; justify-content: center; flex-wrap: wrap; }
@@ -145,16 +225,39 @@
   .lv1 { background: rgba(255,107,53,.25) !important; } .lv2 { background: rgba(255,107,53,.5) !important; }
   .lv3 { background: rgba(255,107,53,.75) !important; } .lv4 { background: var(--accent) !important; }
   .pr-list { display: flex; flex-direction: column; gap: 10px; }
-  .pr-item { display: flex; justify-content: space-between; align-items: center; background: var(--card2); border-radius: 10px; padding: 14px 16px; font-size: 14px; }
+  /* Each record flips on hover to show which session set it - the same
+     detail the real dashboard displays under each record. perspective on
+     the outer box is what makes the rotation read as 3D rather than a
+     flat squash; backface-visibility hides whichever face is turned away. */
+  .pr-item { height: 50px; perspective: 700px; }
+  .pr-inner { position: relative; width: 100%; height: 100%; transform-style: preserve-3d;
+    transition: transform .55s cubic-bezier(.25,.8,.3,1); }
+  .pr-item:hover .pr-inner { transform: rotateX(180deg); }
+  .pr-face { position: absolute; inset: 0; display: flex; justify-content: space-between; align-items: center;
+    background: var(--card2); border-radius: 10px; padding: 14px 16px; font-size: 14px;
+    backface-visibility: hidden; -webkit-backface-visibility: hidden; }
+  .pr-back { transform: rotateX(180deg); background: color-mix(in srgb, var(--accent2) 12%, var(--card2)); }
   .pr-item .pv { font-weight: 800; color: var(--accent2); }
   .pace-line { height: 120px; }
+  /* The line draws itself on hover. pathLength="1" normalises the geometry
+     so the dash maths is 0-to-1 regardless of the actual path length, and
+     the faint ghost underneath keeps the card from looking empty at rest. */
+  .pace-line polyline { fill: none; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+  .pace-ghost { stroke: var(--border); }
+  .pace-path { stroke: var(--accent2); stroke-dasharray: 1; stroke-dashoffset: 1;
+    transition: stroke-dashoffset .55s ease; }
+  .pace-dot { fill: var(--accent2); opacity: 0; transition: opacity .2s ease; }
+  /* Longer, eased draw on the way in; quick retract on the way out. The
+     dot waits for the line to arrive before appearing. */
+  .fvis:hover .pace-path { stroke-dashoffset: 0; transition: stroke-dashoffset 1.3s cubic-bezier(.35,0,.2,1); }
+  .fvis:hover .pace-dot { opacity: 1; transition: opacity .3s ease 1.05s; }
 
   .tabs-row { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-bottom: 30px; }
   .mtab { padding: 10px 22px; background: transparent; border: 1px solid var(--border); border-radius: 30px; color: var(--muted); font-size: 14px; cursor: pointer; transition: all .2s; }
   .mtab.active { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
   .metric-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 16px; }
   .mcard { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; transition: transform .3s, border-color .3s, box-shadow .3s; }
-  .mcard:hover { transform: translateY(-7px); border-color: var(--accent2); box-shadow: 0 16px 40px rgba(0,0,0,.4); }
+  .mcard:hover { transform: translateY(-7px); border-color: var(--accent2); box-shadow: var(--shadow-md); }
   .mcard .mi { font-size: 24px; margin-bottom: 12px; color: var(--accent); line-height: 1; }
   .mcard:nth-child(2) .mi { color: var(--accent2); }
   .mcard:nth-child(3) .mi { color: var(--purple); }
@@ -230,7 +333,7 @@
 
   /* ================= DASHBOARD ================= */
   #app-view { position: relative; z-index: 1; }
-  header.app-bar { display: flex; justify-content: space-between; align-items: center; gap: 20px; padding: 0 3vw; height: 62px; border-bottom: 1px solid var(--border); background: rgba(11,15,20,.86); backdrop-filter: blur(16px); position: sticky; top: 0; z-index: 40; }
+  header.app-bar { display: flex; justify-content: space-between; align-items: center; gap: 20px; padding: 0 3vw; height: 62px; border-bottom: 1px solid var(--border); background: var(--bar-bg); backdrop-filter: blur(16px); position: sticky; top: 0; z-index: 40; }
   .bar-left { display: flex; align-items: center; gap: 30px; height: 100%; }
   .bar-nav { display: flex; height: 100%; }
   .bar-nav button { background: none; border: none; border-bottom: 3px solid transparent; color: var(--muted); font-size: 14px; padding: 0 16px; height: 100%; cursor: pointer; transition: all .2s; }
@@ -238,13 +341,13 @@
   .bar-nav button.on { color: var(--text); border-bottom-color: var(--accent); font-weight: 600; }
   .bar-right { display: flex; align-items: center; gap: 14px; }
   .bar-btn { display: flex; align-items: center; gap: 7px; padding: 9px 18px; background: linear-gradient(135deg, var(--accent), #ff8f5e); color: #fff; border: none; border-radius: 9px; font-size: 14px; font-weight: 600; cursor: pointer; transition: transform .2s, box-shadow .2s; }
-  .bar-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 22px rgba(255,107,53,.35); }
+  .bar-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 22px rgba(224,85,32,.32); }
   .round-btn { width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--border); background: transparent; color: var(--muted); font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all .2s; }
   .round-btn:hover { color: var(--accent); border-color: var(--accent); transform: rotate(90deg); }
   .avatar { width: 36px; height: 36px; border-radius: 50%; background: linear-gradient(135deg, var(--accent), var(--purple)); display: flex; align-items: center; justify-content: center; font-weight: 700; color: #fff; font-size: 15px; cursor: pointer; transition: transform .2s; }
   .avatar:hover { transform: scale(1.08); }
   .menu-wrap { position: relative; }
-  .menu { position: absolute; right: 0; top: 46px; background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 6px; min-width: 200px; box-shadow: 0 16px 44px rgba(0,0,0,.55); animation: pop .18s ease; z-index: 50; }
+  .menu { position: absolute; right: 0; top: 46px; background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 6px; min-width: 200px; box-shadow: var(--shadow-md); animation: pop .18s ease; z-index: 50; }
   .menu .mhead { padding: 12px 14px 10px; border-bottom: 1px solid var(--border); margin-bottom: 6px; }
   .menu .mhead b { display: block; font-size: 14px; }
   .menu .mhead span { font-size: 12px; color: var(--muted); word-break: break-all; }
@@ -272,7 +375,7 @@
   .hb-latest b { color: var(--text); font-weight: 600; }
   .hb-stats { display: flex; gap: 10px; flex-wrap: wrap; }
   .hb-stat { background: var(--card2); border-radius: 12px; padding: 12px 22px; text-align: center; min-width: 104px; transition: transform .25s, background .25s; }
-  .hb-stat:hover { transform: translateY(-4px); background: #222e3b; }
+  .hb-stat:hover { transform: translateY(-4px); background: var(--hover-bg); }
   .hb-stat .n { font-size: 22px; font-weight: 800; }
   .hb-stat .l { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .9px; margin-top: 2px; }
   .hb-stat.streak .n { color: var(--accent); display: flex; align-items: center; justify-content: center; gap: 5px; }
@@ -301,7 +404,7 @@
   .profile-card .p-stats > div:first-child { border-bottom-left-radius: var(--radius); }
   .profile-card > :last-child { border-bottom-left-radius: var(--radius); border-bottom-right-radius: var(--radius); }
   .profile-top { padding: 0 20px 20px; text-align: center; }
-  .big-avatar { width: 88px; height: 88px; border-radius: 50%; background: linear-gradient(135deg, var(--accent), var(--purple)); border: 4px solid var(--bg); display: flex; align-items: center; justify-content: center; font-weight: 800; color: #fff; font-size: 34px; margin: -44px auto 12px; box-shadow: 0 8px 26px rgba(0,0,0,.4); }
+  .big-avatar { width: 88px; height: 88px; border-radius: 50%; background: linear-gradient(135deg, var(--accent), var(--purple)); border: 4px solid var(--bg); display: flex; align-items: center; justify-content: center; font-weight: 800; color: #fff; font-size: 34px; margin: -44px auto 12px; box-shadow: var(--shadow-sm); }
   .p-name { font-size: 20px; font-weight: 700; }
   .p-mail { font-size: 12px; color: var(--muted); word-break: break-all; margin-top: 3px; }
   .p-stats { display: grid; grid-template-columns: repeat(3, 1fr); border-top: 1px solid var(--border); }
@@ -352,7 +455,7 @@
 
   .acard { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); animation: slideIn .35s ease backwards; transition: border-color .25s, box-shadow .25s; }
   @keyframes slideIn { from { opacity: 0; transform: translateY(14px); } }
-  .acard:hover { border-color: rgba(255,107,53,.5); box-shadow: 0 10px 30px rgba(0,0,0,.35); }
+  .acard:hover { border-color: rgba(255,107,53,.5); box-shadow: var(--shadow-md); }
   .ac-head { display: flex; align-items: center; gap: 12px; padding: 16px 18px 0; }
   .ac-av { width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, var(--accent), var(--purple)); display: flex; align-items: center; justify-content: center; font-weight: 700; color: #fff; font-size: 15px; flex-shrink: 0; }
   .ac-who { flex: 1; min-width: 0; }
@@ -396,7 +499,7 @@
   .kv b.teal { color: var(--accent2); }
   .range-row { display: flex; gap: 5px; }
   .range-row button { background: none; border: 1px solid var(--border); color: var(--muted); font-size: 11px; padding: 4px 9px; border-radius: 6px; cursor: pointer; transition: all .2s; }
-  .range-row button.on { background: var(--accent2); border-color: var(--accent2); color: #04241f; font-weight: 700; }
+  .range-row button.on { background: var(--accent2); border-color: var(--accent2); color: var(--on-accent2); font-weight: 700; }
   /* Fixed-height wrapper: without it a maintainAspectRatio:false chart
      resizes its own container on every frame and grows forever. */
   .chart-box { position: relative; height: 190px; width: 100%; }
@@ -405,6 +508,7 @@
   .cal-grid i { aspect-ratio: 1; border-radius: 3px; background: var(--card2); transition: transform .15s; }
   .cal-grid i:hover { transform: scale(1.55); }
   .cal-legend { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); margin-top: 10px; }
+  .ring-track { stroke: var(--card2); }
   .ring { position: relative; width: 92px; height: 92px; flex-shrink: 0; }
   .ring svg { transform: rotate(-90deg); }
   .ring .rtxt { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
@@ -450,7 +554,7 @@
   .dash-bottom p { font-size: 14px; color: var(--muted); line-height: 1.7; }
 
   /* modal */
-  .overlay { position: fixed; inset: 0; background: rgba(5,8,11,.78); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; padding: 20px; z-index: 90; animation: fade .2s ease; }
+  .overlay { position: fixed; inset: 0; background: var(--overlay); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; padding: 20px; z-index: 90; animation: fade .2s ease; }
   @keyframes fade { from { opacity: 0; } }
   .modal { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 26px; width: 100%; max-width: 480px; max-height: 88vh; overflow-y: auto; overscroll-behavior: contain; animation: pop .28s cubic-bezier(.2,.9,.3,1.2); }
   /* Slightly slimmer inside the modal, and it fades in only when needed. */
@@ -492,7 +596,7 @@
   /* RPE suggestion in the log modal */
   .rpe-suggest { display: flex; align-items: center; gap: 10px; background: rgba(78,205,196,.1); border: 1px solid rgba(78,205,196,.35); border-radius: 9px; padding: 9px 12px; margin-top: 10px; font-size: 12px; color: var(--muted); animation: pop .25s ease; }
   .rpe-suggest b { color: var(--accent2); }
-  .rpe-suggest button { margin-left: auto; background: var(--accent2); border: none; color: #04241f; font-size: 12px; font-weight: 700; padding: 6px 13px; border-radius: 7px; cursor: pointer; flex-shrink: 0; }
+  .rpe-suggest button { margin-left: auto; background: var(--accent2); border: none; color: var(--on-accent2); font-size: 12px; font-weight: 700; padding: 6px 13px; border-radius: 7px; cursor: pointer; flex-shrink: 0; }
   .rpe-suggest button:hover { filter: brightness(1.1); }
   .rpe-suggest .ic { width: 17px; height: 17px; color: var(--accent2); flex-shrink: 0; }
   .rpe-suggest small { color: var(--muted); font-size: 11px; }
@@ -513,13 +617,13 @@
   .modal .btn { width: 100%; margin-top: 20px; }
   .modal-actions { display: flex; gap: 10px; margin-top: 20px; }
   .modal-actions button { flex: 1; }
-  .sheet { position: fixed; background: var(--card); border: 1px solid var(--border); border-radius: 11px; padding: 5px; min-width: 150px; box-shadow: 0 14px 40px rgba(0,0,0,.55); z-index: 80; animation: pop .16s ease; }
+  .sheet { position: fixed; background: var(--card); border: 1px solid var(--border); border-radius: 11px; padding: 5px; min-width: 150px; box-shadow: var(--shadow-md); z-index: 80; animation: pop .16s ease; }
   .sheet button { display: block; width: 100%; text-align: left; background: none; border: none; color: var(--muted); font-size: 13px; padding: 9px 13px; border-radius: 7px; cursor: pointer; }
   .sheet button:hover { background: var(--card2); color: var(--text); }
   .sheet button.danger:hover { color: var(--danger); }
 
   .toasts { position: fixed; bottom: 22px; right: 22px; display: flex; flex-direction: column; gap: 10px; z-index: 120; }
-  .toast { background: var(--card); border: 1px solid var(--border); border-left: 3px solid var(--accent2); border-radius: 10px; padding: 13px 18px; font-size: 14px; box-shadow: 0 14px 40px rgba(0,0,0,.5); animation: toastIn .3s cubic-bezier(.2,.9,.3,1.2); }
+  .toast { background: var(--card); border: 1px solid var(--border); border-left: 3px solid var(--accent2); border-radius: 10px; padding: 13px 18px; font-size: 14px; box-shadow: var(--shadow-md); animation: toastIn .3s cubic-bezier(.2,.9,.3,1.2); }
   .toast.err { border-left-color: var(--danger); }
   @keyframes toastIn { from { opacity: 0; transform: translateX(40px); } }
 
@@ -542,7 +646,7 @@
 
   /* drifting dot grid behind everything */
   .grid-bg { position: fixed; inset: -50% -50% 0 -50%; z-index: 0; pointer-events: none; opacity: .45;
-    background-image: radial-gradient(rgba(139,152,165,.14) 1px, transparent 1px); background-size: 42px 42px;
+    background-image: radial-gradient(var(--grid-dot) 1px, transparent 1px); background-size: 42px 42px;
     animation: gridDrift 34s linear infinite; }
   @keyframes gridDrift { to { transform: translate(42px, 42px); } }
 
@@ -554,7 +658,7 @@
   .mcard, .step, .persona, .fvis, .acard, .frow .fvis { position: relative; overflow: hidden; }
   .mcard::after, .step::after, .persona::after, .fvis::after, .acard::after {
     content: ""; position: absolute; inset: 0; pointer-events: none;
-    background: linear-gradient(115deg, transparent 42%, rgba(255,255,255,.07) 50%, transparent 58%);
+    background: linear-gradient(115deg, transparent 42%, var(--shine) 50%, transparent 58%);
     transform: translateX(-110%); transition: transform .75s cubic-bezier(.2,.8,.3,1);
   }
   .mcard:hover::after, .step:hover::after, .persona:hover::after, .fvis:hover::after, .acard:hover::after { transform: translateX(110%); }
@@ -603,7 +707,7 @@
   .grid-3 > *:nth-child(3) { animation-delay: .14s; }
 
   .card { transition: border-color .3s, box-shadow .3s, transform .3s; }
-  .grid-3 .card:hover, .hero-bar:hover { border-color: rgba(255,107,53,.4); box-shadow: 0 12px 34px rgba(0,0,0,.4); }
+  .grid-3 .card:hover, .hero-bar:hover { border-color: rgba(255,107,53,.4); box-shadow: var(--shadow-md); }
   .grid-3 .card:hover { transform: translateY(-3px); }
   .hero-bar { transition: border-color .3s, box-shadow .3s; }
 
@@ -644,6 +748,15 @@
   @keyframes blip { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: .35; transform: scale(.8); } }
   .live-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--accent2); margin-left: 8px; animation: blip 1.6s ease-in-out infinite; }
 </style>
+<script>
+  // Runs before the body paints, so a user who chose light never sees a
+  // flash of dark first. The full switch logic lives with the rest of the
+  // app script at the bottom.
+  (function () {
+    var saved = localStorage.getItem("theme");
+    if (saved && saved !== "system") document.documentElement.setAttribute("data-theme", saved);
+  })();
+</script>
 </head>
 <body>
 
@@ -658,6 +771,9 @@
     <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
     <symbol id="i-chevron-down" viewBox="0 0 24 24"><path d="M6 9.5l6 6 6-6"/></symbol>
     <symbol id="i-chevron-up" viewBox="0 0 24 24"><path d="M6 14.5l6-6 6 6"/></symbol>
+    <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.6M12 18.9v2.6M4.2 4.2l1.9 1.9M17.9 17.9l1.9 1.9M2.5 12h2.6M18.9 12h2.6M4.2 19.8l1.9-1.9M17.9 6.1l1.9-1.9"/></symbol>
+    <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20.5 14.6A8.6 8.6 0 0 1 9.4 3.5a8.6 8.6 0 1 0 11.1 11.1z"/></symbol>
+    <symbol id="i-monitor" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="12.5" rx="2.2"/><path d="M8.5 20.5h7M12 16.5v4"/></symbol>
     <symbol id="i-chevron-right" viewBox="0 0 24 24"><path d="M9.5 6l6 6-6 6"/></symbol>
     <symbol id="i-arrow-left" viewBox="0 0 24 24"><path d="M19 12H5M11 18l-6-6 6-6"/></symbol>
     <symbol id="i-pencil" viewBox="0 0 24 24"><path d="M4 20h4L18.5 9.5a2.12 2.12 0 0 0-3-3L5 17v3z"/><path d="M13.5 6.5l3 3"/></symbol>
@@ -742,6 +858,11 @@
       <a href="#faq">FAQ</a>
     </div>
     <div class="nav-actions">
+      <div class="theme-switch">
+        <button data-theme-val="system" title="Match system" aria-label="Match system theme"><svg class="ic"><use href="#i-monitor"/></svg></button>
+        <button data-theme-val="light" title="Light" aria-label="Light theme"><svg class="ic"><use href="#i-sun"/></svg></button>
+        <button data-theme-val="dark" title="Dark" aria-label="Dark theme"><svg class="ic"><use href="#i-moon"/></svg></button>
+      </div>
       <button class="btn-ghost" onclick="openAuth('login')">Log in</button>
       <button class="btn" onclick="openAuth('register')">Get started</button>
     </div>
@@ -759,8 +880,8 @@
       <div class="hero-note rise" style="animation-delay:.54s">Takes about 30 seconds. Email verification, then straight to your dashboard.</div>
     </div>
     <div class="hero-visual">
-      <div class="float-pill fp1"><svg class="ic"><use href="#i-trend"/></svg> Load +12% this week</div>
-      <div class="float-pill fp2"><svg class="ic"><use href="#i-trophy"/></svg> New 10K best</div>
+      <div class="float-pill fp1" id="fp1"><svg class="ic"><use href="#i-trend"/></svg> Load +12% this week</div>
+      <div class="float-pill fp2" id="fp2"><svg class="ic"><use href="#i-trophy"/></svg> New 10K best</div>
       <div class="mock">
         <div class="mock-head"><span>This week</span><span>Mon – Sun</span></div>
         <div class="mock-row">
@@ -841,9 +962,18 @@
       <div class="fvis">
         <div style="font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:1px; margin-bottom:16px">Personal records</div>
         <div class="pr-list">
-          <div class="pr-item"><span>Longest distance</span><span class="pv">21.1 km</span></div>
-          <div class="pr-item"><span>Longest duration</span><span class="pv">118 min</span></div>
-          <div class="pr-item"><span>Best pace</span><span class="pv">4:38 /km</span></div>
+          <div class="pr-item"><div class="pr-inner">
+            <div class="pr-face"><span>Longest distance</span><span class="pv">21.1 km</span></div>
+            <div class="pr-face pr-back"><span>Sunday Run</span><span class="pv">12 Jun</span></div>
+          </div></div>
+          <div class="pr-item"><div class="pr-inner">
+            <div class="pr-face"><span>Longest duration</span><span class="pv">118 min</span></div>
+            <div class="pr-face pr-back"><span>Saturday Hike</span><span class="pv">3 May</span></div>
+          </div></div>
+          <div class="pr-item"><div class="pr-inner">
+            <div class="pr-face"><span>Best pace</span><span class="pv">4:38 /km</span></div>
+            <div class="pr-face pr-back"><span>Tuesday Run</span><span class="pv">28 Jun</span></div>
+          </div></div>
         </div>
       </div>
     </div>
@@ -861,8 +991,9 @@
       <div class="fvis">
         <div style="font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:1px; margin-bottom:14px">Pace trend · min per km</div>
         <svg viewBox="0 0 320 120" class="pace-line" style="width:100%">
-          <polyline points="10,90 55,82 100,86 145,70 190,64 235,58 280,44 310,40" fill="none" stroke="#4ecdc4" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-          <circle cx="310" cy="40" r="5" fill="#4ecdc4"/>
+          <polyline class="pace-ghost" points="10,90 55,82 100,86 145,70 190,64 235,58 280,44 310,40"/>
+          <polyline class="pace-path" points="10,90 55,82 100,86 145,70 190,64 235,58 280,44 310,40" pathLength="1"/>
+          <circle class="pace-dot" cx="310" cy="40" r="5"/>
         </svg>
         <div style="display:flex; justify-content:space-between; font-size:12px; color:var(--muted)"><span>8 weeks ago</span><span>Today</span></div>
       </div>
@@ -1015,6 +1146,11 @@
       </div>
     </div>
     <div class="bar-right">
+      <div class="theme-switch">
+        <button data-theme-val="system" title="Match system" aria-label="Match system theme"><svg class="ic"><use href="#i-monitor"/></svg></button>
+        <button data-theme-val="light" title="Light" aria-label="Light theme"><svg class="ic"><use href="#i-sun"/></svg></button>
+        <button data-theme-val="dark" title="Dark" aria-label="Dark theme"><svg class="ic"><use href="#i-moon"/></svg></button>
+      </div>
       <button class="bar-btn" onclick="openLogModal()"><svg class="ic sm"><use href="#i-plus"/></svg> Log activity</button>
       <button class="round-btn" title="Quick add (N)" onclick="openLogModal()"><svg class="ic sm"><use href="#i-plus"/></svg></button>
       <div class="menu-wrap">
@@ -1074,7 +1210,7 @@
             <div style="display:flex; align-items:center; gap:16px; margin-top:16px">
               <div class="ring">
                 <svg width="92" height="92">
-                  <circle cx="46" cy="46" r="38" fill="none" stroke="#1c2733" stroke-width="9"/>
+                  <circle cx="46" cy="46" r="38" fill="none" class="ring-track" stroke-width="9"/>
                   <circle id="goal-arc" cx="46" cy="46" r="38" fill="none" stroke="#ff6b35" stroke-width="9"
                           stroke-linecap="round" stroke-dasharray="238.8" stroke-dashoffset="238.8"
                           style="transition: stroke-dashoffset 1s cubic-bezier(.2,.8,.3,1)"/>
@@ -1368,6 +1504,31 @@ async function api(method, path, body) {
   return data;
 }
 
+/* ---------- theme ----------
+   Three modes. "system" removes the attribute entirely so the
+   prefers-color-scheme media query takes over; the other two pin it. */
+function applyTheme(mode) {
+  if (mode === "system") document.documentElement.removeAttribute("data-theme");
+  else document.documentElement.setAttribute("data-theme", mode);
+  localStorage.setItem("theme", mode);
+  document.querySelectorAll(".theme-switch button").forEach(b =>
+    b.classList.toggle("on", b.dataset.themeVal === mode));
+  // Chart.js bakes colours in at draw time, so it has to be redrawn.
+  if (chart) renderChart();
+}
+
+document.querySelectorAll(".theme-switch button").forEach(b =>
+  b.addEventListener("click", () => applyTheme(b.dataset.themeVal)));
+applyTheme(localStorage.getItem("theme") || "system");
+
+// While on "system", follow the OS if the user flips it mid-session.
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
+  if ((localStorage.getItem("theme") || "system") === "system" && chart) renderChart();
+});
+
+// Reads a CSS custom property, so JS-drawn things match the active theme.
+const cssVar = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+
 /* ---------- toasts, modals, popover sheets ---------- */
 function toast(msg, isError) {
   const el = document.createElement("div");
@@ -1409,6 +1570,47 @@ $("mock-bars").innerHTML = barHeights.map((h, i) =>
 const loadLevels = [1,2,0,3,1,4,0, 2,1,3,0,2,4,1, 1,3,2,0,4,2,1, 3,2,4,1,0,3,2];
 $("load-grid").innerHTML = loadLevels.map((l, i) =>
   `<div class="lv${l}" style="animation-delay:${((i % 7) + Math.floor(i / 7)) * 0.13}s"></div>`).join("");
+
+/* The two badges beside the hero card rotate through real features of the
+   app. They're staggered so only one changes at a time, which reads as
+   movement without either badge ever jumping while you're reading it. */
+const PILL_MESSAGES = {
+  fp1: [
+    ["flame", "Session-RPE training load"],
+    ["gauge", "Acute:chronic load ratio"],
+    ["trend", "Threshold-pace estimates"],
+    ["heart", "Heart-rate effort scores"],
+    ["chart", "8-week volume trends"],
+  ],
+  fp2: [
+    ["target", "Per-sport weekly goals"],
+    ["trophy", "Automatic personal records"],
+    ["run", "28 sports, one log"],
+    ["link", "Daily streak tracking"],
+    ["lock", "Verified accounts"],
+  ],
+};
+
+function cyclePill(id, startDelayMs) {
+  const el = $(id);
+  const items = PILL_MESSAGES[id];
+  let i = 0;
+  const render = () => {
+    const [icon, text] = items[i % items.length];
+    el.innerHTML = ic(icon) + `<span>${text}</span>`;
+  };
+  render();
+
+  // Fade out, swap the contents while invisible, fade back in - so the
+  // text never changes mid-view.
+  const next = () => {
+    el.classList.add("swapping");
+    setTimeout(() => { i++; render(); el.classList.remove("swapping"); }, 350);
+  };
+  setTimeout(() => setInterval(next, 4200), startDelayMs);
+}
+cyclePill("fp1", 0);
+cyclePill("fp2", 2100);
 
 // Scroll progress bar across the top of the page.
 addEventListener("scroll", () => {
@@ -1753,7 +1955,7 @@ function renderStatus() {
         <div class="stv" style="color:${colour}">${s.acwr === null ? "–" : s.acwr}</div>
         <div style="font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.9px">Acute : chronic</div>
       </div>
-      <span class="st-pill" style="background:${colour}22; color:${colour}">${s.acwr_status}</span>
+      <span class="st-pill" style="background:color-mix(in srgb, ${colour} 16%, transparent); color:${colour}">${s.acwr_status}</span>
     </div>
     <div class="st-scale">${pos === null ? "" : `<div class="st-marker" style="left:calc(${pos}% - 2px)"></div>`}</div>
     <div class="st-ticks"><span>0.8</span><span>1.3</span><span>1.5</span><span>2.0+</span></div>
@@ -1856,7 +2058,7 @@ function renderGoals() {
   // minutes are never added together.
   const pct = active.reduce((s, k) => s + Math.min(done[k] / state.goals[k], 1), 0) / active.length;
   $("goal-arc").style.strokeDashoffset = 238.8 * (1 - pct);
-  $("goal-arc").style.stroke = pct >= 1 ? "#4ecdc4" : "#ff6b35";
+  $("goal-arc").style.stroke = pct >= 1 ? "var(--accent2)" : "var(--accent)";
   $("goal-pct").textContent = Math.round(pct * 100) + "%";
 
   const hit = active.filter(k => done[k] >= state.goals[k]).length;
@@ -2094,24 +2296,28 @@ function setWeeks(n, btn) {
 function renderChart() {
   const labels = state.weekly.map(w => w.week_start.slice(5));
   if (chart) chart.destroy();
+  // Colours are pulled from the active theme rather than hardcoded, so
+  // the chart follows light/dark like everything else.
+  const muted = cssVar("--muted"), grid = cssVar("--border");
+  const accent = cssVar("--accent"), accent2 = cssVar("--accent2");
   // Bars = distance, line = training load (duration x RPE): volume and
   // stress on one chart, like professional training platforms.
   chart = new Chart($("weekly-chart"), {
     data: {
       labels,
       datasets: [
-        { type: "bar", label: "km", data: state.weekly.map(w => w.distance_km), backgroundColor: "#ff6b35", borderRadius: 5, yAxisID: "y" },
-        { type: "line", label: "load", data: state.weekly.map(w => w.training_load), borderColor: "#4ecdc4", backgroundColor: "#4ecdc4", tension: .35, pointRadius: 2, yAxisID: "y1" },
+        { type: "bar", label: "km", data: state.weekly.map(w => w.distance_km), backgroundColor: accent, borderRadius: 5, yAxisID: "y" },
+        { type: "line", label: "load", data: state.weekly.map(w => w.training_load), borderColor: accent2, backgroundColor: accent2, tension: .35, pointRadius: 2, yAxisID: "y1" },
       ],
     },
     options: {
       responsive: true, maintainAspectRatio: false,
       animation: { duration: 800, easing: "easeOutQuart" },
-      plugins: { legend: { labels: { color: "#8b98a5", boxWidth: 12, font: { size: 11 } } } },
+      plugins: { legend: { labels: { color: muted, boxWidth: 12, font: { size: 11 } } } },
       scales: {
-        x: { ticks: { color: "#8b98a5", font: { size: 10 } }, grid: { display: false } },
-        y: { ticks: { color: "#8b98a5", font: { size: 10 } }, grid: { color: "#263241" } },
-        y1: { position: "right", ticks: { color: "#8b98a5", font: { size: 10 } }, grid: { drawOnChartArea: false } },
+        x: { ticks: { color: muted, font: { size: 10 } }, grid: { display: false } },
+        y: { ticks: { color: muted, font: { size: 10 } }, grid: { color: grid } },
+        y1: { position: "right", ticks: { color: muted, font: { size: 10 } }, grid: { drawOnChartArea: false } },
       },
     },
   });
