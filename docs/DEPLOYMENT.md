@@ -38,7 +38,18 @@ Every push to `main` redeploys automatically (`autoDeploy: true`), and Render wa
 
 ### Sending real verification emails
 
-Codes are written to the server log until SMTP is configured. In the Render dashboard, set `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER` and `SMTP_PASS` on the web service (these are marked `sync: false` in the blueprint, so they're never committed to the repo).
+**SMTP does not work on Render.** Like most cloud hosts, it blocks outbound SMTP ports as an anti-spam measure, so `smtp.gmail.com:465` fails with `[Errno 101] Network is unreachable` regardless of how correct the credentials are. Port 587 is blocked too.
+
+Use an email API over HTTPS instead — port 443 is never blocked. The app picks its transport automatically from whichever credentials it finds, in this order:
+
+| Env vars | Transport | Notes |
+|---|---|---|
+| `RESEND_API_KEY` (+ optional `MAIL_FROM`) | Resend | Fastest to set up. Without a verified domain it will only deliver to the address that owns the Resend account |
+| `BREVO_API_KEY` + `MAIL_FROM` | Brevo | 300 emails/day free, delivers to any address once the sender address is verified — the better choice for a public demo |
+| `SMTP_HOST` / `SMTP_PORT` / `SMTP_USER` / `SMTP_PASS` | SMTP | Works locally; blocked on most hosts |
+| none | Log only | The code is printed to the server log so the deployment stays usable |
+
+Delivery never raises. The account row is committed before the email goes out, so a mail failure must not turn a successful registration into a 500 — instead the failure is logged with the provider's reason, and the code is written to the log as a fallback.
 
 ### Free-tier caveats
 

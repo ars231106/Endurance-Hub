@@ -16,15 +16,13 @@ services:
         fromDatabase:
           name: endurancehub-db
           property: connectionString
-      # Set these in the Render dashboard to send real verification
-      # emails; leave unset and codes are logged instead.
-      - key: SMTP_HOST
+      # Render blocks outbound SMTP, so mail goes over an HTTPS API.
+      # Set one of these in the dashboard; unset means codes are logged.
+      - key: BREVO_API_KEY
         sync: false
-      - key: SMTP_PORT
+      - key: MAIL_FROM
         sync: false
-      - key: SMTP_USER
-        sync: false
-      - key: SMTP_PASS
+      - key: RESEND_API_KEY
         sync: false
 
 databases:
