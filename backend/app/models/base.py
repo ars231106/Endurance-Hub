@@ -1,3 +1,3 @@
-from sqlalchemy.orm import declarative_base  # type: ignore
+from sqlalchemy.orm import declarative_base 
 
 Base = declarative_base()

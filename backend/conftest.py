@@ -64,7 +64,7 @@ def read_otp(email: str) -> str:
 def verified_user(client, unique_email):
     """Registers, verifies and returns a ready-to-use account with its
     auth headers - the starting point for most tests."""
-    password = "secret123"
+    password = "Secret123!"
     client.post("/register", json={"name": "Test Athlete", "email": unique_email, "password": password})
     resp = client.post("/verify-email", json={"email": unique_email, "code": read_otp(unique_email)})
     token = resp.json()["access_token"]

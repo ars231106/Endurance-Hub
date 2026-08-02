@@ -48,11 +48,11 @@ def fetch_otp(email):
 email = f"smoke{random.randint(1000, 9999)}@test.com"
 
 call("GET", "/health", expect=200)
-call("POST", "/register", {"name": "Smoke", "email": email, "password": "secret123"}, expect=201)
-call("POST", "/register", {"name": "Smoke", "email": email, "password": "secret123"}, expect=409)
+call("POST", "/register", {"name": "Smoke", "email": email, "password": "Secret123!"}, expect=201)
+call("POST", "/register", {"name": "Smoke", "email": email, "password": "Secret123!"}, expect=409)
 
 # Unverified accounts can't log in yet.
-call("POST", "/login", {"email": email, "password": "secret123"}, expect=403)
+call("POST", "/login", {"email": email, "password": "Secret123!"}, expect=403)
 
 # OTP flow: wrong code, cooldown, then the real code.
 call("POST", "/verify-email", {"email": email, "code": "000000"}, expect=400)
@@ -63,7 +63,7 @@ TOKEN = resp["access_token"]
 
 call("GET", "/me", expect=200)
 call("POST", "/login", {"email": email, "password": "wrong"}, expect=401)
-call("POST", "/login", {"email": email, "password": "secret123"}, expect=200)
+call("POST", "/login", {"email": email, "password": "Secret123!"}, expect=200)
 
 a1 = call("POST", "/activities", {"activity_type": "run", "distance_km": 5, "duration_min": 30, "rpe": 6}, expect=201)
 a2 = call("POST", "/activities", {"activity_type": "ride", "distance_km": 20, "duration_min": 45, "rpe": 4, "notes": "easy spin"}, expect=201)
@@ -124,9 +124,9 @@ call("DELETE", f"/activities/{a2['id']}", expect=204)
 # Account deletion: wrong password rejected, then schedule + cancel.
 call("POST", "/me/delete", {"password": "wrong"}, expect=401)
 call("POST", "/me/cancel-deletion", expect=400)  # nothing scheduled yet
-me = call("POST", "/me/delete", {"password": "secret123"}, expect=200)
+me = call("POST", "/me/delete", {"password": "Secret123!"}, expect=200)
 assert me["delete_requested_at"], "deletion timestamp missing"
-call("POST", "/me/delete", {"password": "secret123"}, expect=400)  # already scheduled
+call("POST", "/me/delete", {"password": "Secret123!"}, expect=400)  # already scheduled
 me = call("POST", "/me/cancel-deletion", expect=200)
 assert me["delete_requested_at"] is None, "cancellation failed"
 

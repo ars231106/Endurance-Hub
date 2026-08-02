@@ -1,13 +1,33 @@
+import re
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
+
+# Each rule is a pattern plus the wording used in the error message, so the
+# API can tell the user exactly what's missing instead of a vague "invalid
+# password". The frontend shows the same list as a live checklist.
+PASSWORD_RULES = [
+    (r"[a-z]", "a lowercase letter"),
+    (r"[A-Z]", "an uppercase letter"),
+    (r"\d", "a number"),
+    (r"[^A-Za-z0-9]", "a special character"),
+]
+PASSWORD_MIN_LENGTH = 8
 
 
 class UserCreate(BaseModel):
     name: str = Field(min_length=1, max_length=100)
     email: str = Field(min_length=3, max_length=255)
-    password: str = Field(min_length=6, max_length=128)
+    password: str = Field(min_length=PASSWORD_MIN_LENGTH, max_length=128)
+
+    @field_validator("password")
+    @classmethod
+    def password_is_strong(cls, value: str) -> str:
+        missing = [label for pattern, label in PASSWORD_RULES if not re.search(pattern, value)]
+        if missing:
+            raise ValueError("Password must contain " + ", ".join(missing))
+        return value
 
 
 class UserLogin(BaseModel):

@@ -120,7 +120,7 @@ def test_users_cannot_see_or_touch_each_others_activities(client, verified_user)
     # taken from the unique_email fixture, which verified_user has already
     # consumed - both would otherwise receive the same address.
     other_email = f"other_{uuid.uuid4().hex[:10]}@example.test"
-    client.post("/register", json={"name": "B", "email": other_email, "password": "secret123"})
+    client.post("/register", json={"name": "B", "email": other_email, "password": "Secret123!"})
     token = client.post("/verify-email",
                         json={"email": other_email, "code": read_otp(other_email)}).json()["access_token"]
     other_h = {"Authorization": f"Bearer {token}"}

@@ -320,6 +320,25 @@
   .resend-line { text-align: center; margin-top: 18px; font-size: 13px; color: var(--muted); }
   .resend-line button { background: none; border: none; color: var(--accent2); cursor: pointer; font-size: 13px; }
   .resend-line button:disabled { color: var(--muted); cursor: default; }
+  /* password field: reveal toggle, suggestion button, live rule checklist */
+  .pw-head { display: flex; justify-content: space-between; align-items: flex-end; }
+  .pw-suggest { background: none; border: none; color: var(--accent2); font-size: 12px; cursor: pointer; padding: 0 0 6px; }
+  .pw-suggest:hover { text-decoration: underline; }
+  .pw-wrap { position: relative; }
+  .pw-wrap input { padding-right: 42px; }
+  .pw-eye { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); background: none; border: none;
+    color: var(--muted); cursor: pointer; padding: 7px; border-radius: 7px; display: flex; }
+  .pw-eye:hover { color: var(--text); background: var(--card2); }
+  .pw-eye .ic { width: 17px; height: 17px; }
+  .pw-rules { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  .pw-rule { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--muted);
+    background: var(--card2); border: 1px solid transparent; border-radius: 20px; padding: 4px 10px; transition: all .2s; }
+  .pw-rule .ic { width: 12px; height: 12px; }
+  .pw-rule.ok { color: var(--accent2); border-color: color-mix(in srgb, var(--accent2) 40%, transparent);
+    background: color-mix(in srgb, var(--accent2) 12%, var(--card2)); }
+  .pw-note { font-size: 12px; color: var(--accent2); margin-top: 8px; display: flex; align-items: center; gap: 6px; }
+  .pw-note .ic { width: 14px; height: 14px; flex-shrink: 0; }
+
   .check-row { display: flex; align-items: center; gap: 10px; margin: 18px 0 0; font-size: 13px; color: var(--muted); cursor: pointer; user-select: none; }
   .check-row input { width: 17px; height: 17px; accent-color: var(--accent); cursor: pointer; flex-shrink: 0; }
   .check-row:hover span { color: var(--text); }
@@ -531,7 +550,7 @@
 
   /* Custom number stepper: native spinners are tiny, only appear on hover
      and can't be themed, so they're hidden and replaced with chevrons. */
-  input[type=number] { -moz-appearance: textfield; }
+  input[type=number] { -moz-appearance: textfield; -webkit-appearance: textfield; appearance: textfield; }
   input[type=number]::-webkit-outer-spin-button,
   input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
   .numwrap { position: relative; display: inline-flex; align-items: center; flex-shrink: 0; }
@@ -748,6 +767,10 @@
   @keyframes blip { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: .35; transform: scale(.8); } }
   .live-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--accent2); margin-left: 8px; animation: blip 1.6s ease-in-out infinite; }
 </style>
+
+
+
+
 <script>
   // Runs before the body paints, so a user who chose light never sees a
   // flash of dark first. The full switch logic lives with the rest of the
@@ -774,6 +797,9 @@
     <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.6M12 18.9v2.6M4.2 4.2l1.9 1.9M17.9 17.9l1.9 1.9M2.5 12h2.6M18.9 12h2.6M4.2 19.8l1.9-1.9M17.9 6.1l1.9-1.9"/></symbol>
     <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20.5 14.6A8.6 8.6 0 0 1 9.4 3.5a8.6 8.6 0 1 0 11.1 11.1z"/></symbol>
     <symbol id="i-monitor" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="12.5" rx="2.2"/><path d="M8.5 20.5h7M12 16.5v4"/></symbol>
+    <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2.5 12s3.5-6.5 9.5-6.5S21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="2.8"/></symbol>
+    <symbol id="i-eye-off" viewBox="0 0 24 24"><path d="M9.9 5.7A9.6 9.6 0 0 1 12 5.5c6 0 9.5 6.5 9.5 6.5a17 17 0 0 1-3 3.9M6.5 8.1A17 17 0 0 0 2.5 12S6 18.5 12 18.5c.9 0 1.7-.1 2.5-.4"/><path d="M4 4l16 16"/></symbol>
+    <symbol id="i-dice" viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="17" height="17" rx="3.5"/><circle cx="8.5" cy="8.5" r="1.3" fill="currentColor" stroke="none"/><circle cx="15.5" cy="15.5" r="1.3" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.3" fill="currentColor" stroke="none"/></symbol>
     <symbol id="i-chevron-right" viewBox="0 0 24 24"><path d="M9.5 6l6 6-6 6"/></symbol>
     <symbol id="i-arrow-left" viewBox="0 0 24 24"><path d="M19 12H5M11 18l-6-6 6-6"/></symbol>
     <symbol id="i-pencil" viewBox="0 0 24 24"><path d="M4 20h4L18.5 9.5a2.12 2.12 0 0 0-3-3L5 17v3z"/><path d="M13.5 6.5l3 3"/></symbol>
@@ -1104,8 +1130,18 @@
         <div id="field-name" class="hidden"><label for="in-name">Name</label><input id="in-name" name="name" autocomplete="name" placeholder="Aryan"></div>
         <label for="in-email">Email</label>
         <input id="in-email" name="username" type="email" autocomplete="username" placeholder="you@example.com">
-        <label for="in-password">Password</label>
-        <input id="in-password" name="password" type="password" autocomplete="current-password" placeholder="min 6 characters">
+        <div class="pw-head">
+          <label for="in-password">Password</label>
+          <button type="button" class="pw-suggest hidden" id="pw-suggest" onclick="suggestPassword()">Suggest a strong one</button>
+        </div>
+        <div class="pw-wrap">
+          <input id="in-password" name="password" type="password" autocomplete="current-password"
+                 placeholder="your password" oninput="renderPasswordRules()">
+          <button type="button" class="pw-eye" id="pw-eye" aria-label="Show password" onclick="togglePassword()">
+            <svg class="ic"><use href="#i-eye"/></svg>
+          </button>
+        </div>
+        <div class="pw-rules hidden" id="pw-rules"></div>
         <label class="check-row">
           <input type="checkbox" id="remember-me" checked>
           <span>Remember me on this device</span>
@@ -1717,6 +1753,11 @@ function switchTab(mode) {
   // Tells the password manager whether to offer an existing password
   // or generate/save a new one.
   $("in-password").autocomplete = mode === "login" ? "current-password" : "new-password";
+  // The strength checklist and generator only make sense when choosing
+  // a new password.
+  $("pw-suggest").classList.toggle("hidden", mode === "login");
+  $("in-password").placeholder = mode === "login" ? "your password" : "at least 8 characters";
+  renderPasswordRules();
   prefillRemembered();
 }
 
@@ -1753,6 +1794,76 @@ function forgetRemembered() {
 function backToCreds() {
   $("cred-step").classList.remove("hidden");
   $("otp-step").classList.add("hidden");
+}
+
+/* ---------- password strength ----------
+   These rules mirror PASSWORD_RULES in backend/app/schemas/user_schemas.py.
+   The browser check is only for feedback while typing - the server enforces
+   the same rules, because anything checked only in the browser can be
+   bypassed by sending the request directly. */
+const PW_RULES = [
+  ["8+ characters", v => v.length >= 8],
+  ["lowercase", v => /[a-z]/.test(v)],
+  ["uppercase", v => /[A-Z]/.test(v)],
+  ["number", v => /\d/.test(v)],
+  ["special", v => /[^A-Za-z0-9]/.test(v)],
+];
+
+function renderPasswordRules() {
+  const box = $("pw-rules");
+  // Rules only apply when creating a password, never when typing an
+  // existing one to log in.
+  if (authMode !== "register") { box.classList.add("hidden"); return; }
+  box.classList.remove("hidden");
+  const value = $("in-password").value;
+  box.innerHTML = PW_RULES.map(([label, test]) => {
+    const ok = test(value);
+    return `<span class="pw-rule ${ok ? "ok" : ""}">${ic(ok ? "check" : "x")}${label}</span>`;
+  }).join("");
+}
+
+function togglePassword() {
+  const input = $("in-password");
+  const showing = input.type === "text";
+  input.type = showing ? "password" : "text";
+  $("pw-eye").innerHTML = `<svg class="ic"><use href="#i-${showing ? "eye" : "eye-off"}"/></svg>`;
+}
+
+/* Builds a password that satisfies every rule by construction: one
+   character from each required set, then random fill, then shuffled so the
+   guaranteed characters aren't always in the same positions.
+
+   crypto.getRandomValues - not Math.random - because Math.random is
+   predictable and must never be used for anything security-related. */
+function generatePassword(length = 16) {
+  const lower = "abcdefghijkmnopqrstuvwxyz";   // no l
+  const upper = "ABCDEFGHJKLMNPQRSTUVWXYZ";    // no I or O
+  const digits = "23456789";                   // no 0 or 1
+  const special = "!@#$%^&*-_=+?";
+  const all = lower + upper + digits + special;
+
+  const pick = set => set[crypto.getRandomValues(new Uint32Array(1))[0] % set.length];
+  const chars = [pick(lower), pick(upper), pick(digits), pick(special)];
+  while (chars.length < length) chars.push(pick(all));
+
+  // Fisher-Yates shuffle, so position doesn't leak which set a character
+  // came from.
+  for (let i = chars.length - 1; i > 0; i--) {
+    const j = crypto.getRandomValues(new Uint32Array(1))[0] % (i + 1);
+    [chars[i], chars[j]] = [chars[j], chars[i]];
+  }
+  return chars.join("");
+}
+
+function suggestPassword() {
+  const input = $("in-password");
+  input.value = generatePassword();
+  input.type = "text";                       // reveal it - they need to see it
+  $("pw-eye").innerHTML = `<svg class="ic"><use href="#i-eye-off"/></svg>`;
+  renderPasswordRules();
+  $("pw-rules").insertAdjacentHTML("afterend",
+    `<div class="pw-note" id="pw-note">${ic("lock")}Your browser will offer to save this when you finish signing up.</div>`);
+  setTimeout(() => { const n = $("pw-note"); if (n) n.remove(); }, 6000);
 }
 
 function showOtpStep(email) {

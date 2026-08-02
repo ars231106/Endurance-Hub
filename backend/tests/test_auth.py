@@ -7,7 +7,7 @@ def test_health(client):
 
 
 def test_register_creates_unverified_account(client, unique_email):
-    r = client.post("/register", json={"name": "A", "email": unique_email, "password": "secret123"})
+    r = client.post("/register", json={"name": "A", "email": unique_email, "password": "Secret123!"})
     assert r.status_code == 201
     body = r.json()
     assert body["email"] == unique_email
@@ -16,24 +16,47 @@ def test_register_creates_unverified_account(client, unique_email):
 
 
 def test_duplicate_email_is_rejected(client, unique_email):
-    payload = {"name": "A", "email": unique_email, "password": "secret123"}
+    payload = {"name": "A", "email": unique_email, "password": "Secret123!"}
     assert client.post("/register", json=payload).status_code == 201
     assert client.post("/register", json=payload).status_code == 409
 
 
-def test_short_password_is_rejected(client, unique_email):
-    r = client.post("/register", json={"name": "A", "email": unique_email, "password": "abc"})
-    assert r.status_code == 422
+def test_weak_passwords_are_rejected(client, unique_email):
+    """Length alone isn't enough - every character class is required."""
+    weak = [
+        "abc",             # too short
+        "abcdefghij",      # no uppercase, digit or symbol
+        "abcdefgH1",       # no symbol
+        "ABCDEFGH1!",      # no lowercase
+        "Abcdefgh!",       # no digit
+        "Abcdefg1",        # no symbol, and only 8 chars
+    ]
+    for pw in weak:
+        r = client.post("/register", json={"name": "A", "email": unique_email, "password": pw})
+        assert r.status_code == 422, pw
+
+
+def test_strong_password_is_accepted(client, unique_email):
+    r = client.post("/register", json={"name": "A", "email": unique_email, "password": "Secret123!"})
+    assert r.status_code == 201
+
+
+def test_login_ignores_the_strength_rules(client, verified_user):
+    """Rules belong where a password is chosen, not where it's checked -
+    otherwise anyone with an older, weaker password could never log in."""
+    r = client.post("/login", json={"email": verified_user["email"], "password": "abc"})
+    assert r.status_code == 401          # rejected as wrong, not as malformed
+    assert r.status_code != 422
 
 
 def test_login_blocked_until_email_verified(client, unique_email):
-    client.post("/register", json={"name": "A", "email": unique_email, "password": "secret123"})
-    r = client.post("/login", json={"email": unique_email, "password": "secret123"})
+    client.post("/register", json={"name": "A", "email": unique_email, "password": "Secret123!"})
+    r = client.post("/login", json={"email": unique_email, "password": "Secret123!"})
     assert r.status_code == 403
 
 
 def test_wrong_otp_is_rejected_then_correct_one_works(client, unique_email):
-    client.post("/register", json={"name": "A", "email": unique_email, "password": "secret123"})
+    client.post("/register", json={"name": "A", "email": unique_email, "password": "Secret123!"})
     assert client.post("/verify-email", json={"email": unique_email, "code": "000000"}).status_code == 400
 
     r = client.post("/verify-email", json={"email": unique_email, "code": read_otp(unique_email)})
@@ -42,12 +65,12 @@ def test_wrong_otp_is_rejected_then_correct_one_works(client, unique_email):
 
 
 def test_otp_must_be_six_digits(client, unique_email):
-    client.post("/register", json={"name": "A", "email": unique_email, "password": "secret123"})
+    client.post("/register", json={"name": "A", "email": unique_email, "password": "Secret123!"})
     assert client.post("/verify-email", json={"email": unique_email, "code": "12ab56"}).status_code == 422
 
 
 def test_otp_is_single_use(client, unique_email):
-    client.post("/register", json={"name": "A", "email": unique_email, "password": "secret123"})
+    client.post("/register", json={"name": "A", "email": unique_email, "password": "Secret123!"})
     code = read_otp(unique_email)
     assert client.post("/verify-email", json={"email": unique_email, "code": code}).status_code == 200
     # Already verified, and the code was consumed.
@@ -55,12 +78,12 @@ def test_otp_is_single_use(client, unique_email):
 
 
 def test_resend_is_rate_limited(client, unique_email):
-    client.post("/register", json={"name": "A", "email": unique_email, "password": "secret123"})
+    client.post("/register", json={"name": "A", "email": unique_email, "password": "Secret123!"})
     assert client.post("/resend-otp", json={"email": unique_email}).status_code == 429
 
 
 def test_login_and_me(client, verified_user):
-    r = client.post("/login", json={"email": verified_user["email"], "password": "secret123"})
+    r = client.post("/login", json={"email": verified_user["email"], "password": "Secret123!"})
     assert r.status_code == 200
 
     me = client.get("/me", headers=verified_user["headers"])
@@ -98,8 +121,8 @@ def test_account_deletion_lifecycle(client, verified_user):
     assert client.post("/me/delete", json={"password": "wrong"}, headers=h).status_code == 401
     assert client.post("/me/cancel-deletion", headers=h).status_code == 400  # nothing scheduled
 
-    r = client.post("/me/delete", json={"password": "secret123"}, headers=h)
+    r = client.post("/me/delete", json={"password": "Secret123!"}, headers=h)
     assert r.status_code == 200 and r.json()["delete_requested_at"]
-    assert client.post("/me/delete", json={"password": "secret123"}, headers=h).status_code == 400
+    assert client.post("/me/delete", json={"password": "Secret123!"}, headers=h).status_code == 400
 
     assert client.post("/me/cancel-deletion", headers=h).json()["delete_requested_at"] is None
