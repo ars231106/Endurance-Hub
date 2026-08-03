@@ -91,6 +91,13 @@ if FRONTEND_DIR.exists():
     @app.get("/")
     def serve_frontend():
         return FileResponse(FRONTEND_DIR / "index.html")
+
+    @app.get("/learn")
+    def serve_study_guide():
+        """A mobile-friendly walkthrough of how this codebase works.
+        Served from the app so it's readable anywhere, not just on the
+        machine holding the source."""
+        return FileResponse(FRONTEND_DIR / "learn.html")
 else:
     @app.get("/")
     def home():

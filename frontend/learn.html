@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0b0f14">
+<title>EnduranceHub — Study Guide</title>
+<style>
+  :root {
+    --bg:#0b0f14; --card:#151d26; --card2:#1c2733; --border:#263241;
+    --text:#eef3f8; --muted:#8b98a5; --accent:#ff6b35; --accent2:#4ecdc4; --code:#0e141b;
+  }
+  :root[data-theme="light"] {
+    --bg:#f4f6f9; --card:#fff; --card2:#eef2f7; --border:#dbe2ea;
+    --text:#16202b; --muted:#5c6874; --accent:#e05520; --accent2:#0e9384; --code:#f2f5f9;
+  }
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) {
+      --bg:#f4f6f9; --card:#fff; --card2:#eef2f7; --border:#dbe2ea;
+      --text:#16202b; --muted:#5c6874; --accent:#e05520; --accent2:#0e9384; --code:#f2f5f9;
+    }
+  }
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  body { background:var(--bg); color:var(--text); font-family:'Segoe UI',system-ui,sans-serif;
+         line-height:1.65; font-size:16px; padding-bottom:60px; }
+
+  header { position:sticky; top:0; z-index:10; background:var(--bg); border-bottom:1px solid var(--border); padding:14px 16px; }
+  .htop { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+  h1 { font-size:18px; font-weight:800; letter-spacing:-.3px; }
+  h1 span { color:var(--accent); }
+  .hbtn { background:var(--card); border:1px solid var(--border); color:var(--muted); font-size:12px;
+          padding:7px 12px; border-radius:20px; cursor:pointer; }
+  .hbtn:active { transform:scale(.95); }
+  .bar { height:4px; background:var(--card2); border-radius:4px; margin-top:12px; overflow:hidden; }
+  .bar i { display:block; height:100%; background:linear-gradient(90deg,var(--accent),var(--accent2));
+           width:0; transition:width .4s; }
+  .bar-lbl { font-size:11px; color:var(--muted); margin-top:6px; }
+
+  main { max-width:820px; margin:0 auto; padding:16px; }
+
+  .part { background:var(--card); border:1px solid var(--border); border-radius:14px; margin-bottom:12px; overflow:hidden; }
+  .part-head { display:flex; align-items:center; gap:12px; padding:16px; cursor:pointer; user-select:none; }
+  .part-num { width:30px; height:30px; border-radius:50%; background:var(--card2); color:var(--muted);
+              display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:700; flex-shrink:0; }
+  .part.done .part-num { background:var(--accent2); color:#04241f; }
+  .part-title { flex:1; font-size:15px; font-weight:600; }
+  .part-title small { display:block; font-weight:400; font-size:12px; color:var(--muted); margin-top:2px; }
+  .chev { color:var(--muted); font-size:13px; transition:transform .25s; }
+  .part.open .chev { transform:rotate(90deg); }
+  .part-body { display:none; padding:0 16px 16px; border-top:1px solid var(--border); }
+  .part.open .part-body { display:block; }
+
+  h3 { font-size:15px; margin:20px 0 8px; color:var(--accent); }
+  p { margin:10px 0; }
+  ul { margin:10px 0 10px 20px; }
+  li { margin:5px 0; }
+  b { font-weight:600; }
+  code { background:var(--code); padding:2px 6px; border-radius:5px; font-size:13px;
+         font-family:'Cascadia Code',Consolas,monospace; word-break:break-word; }
+  pre { background:var(--code); border:1px solid var(--border); border-radius:10px; padding:12px;
+        overflow-x:auto; margin:12px 0; }
+  pre code { background:none; padding:0; font-size:12.5px; line-height:1.6; white-space:pre; }
+  .note { background:var(--card2); border-left:3px solid var(--accent); border-radius:0 8px 8px 0;
+          padding:10px 12px; margin:12px 0; font-size:14px; }
+  table { width:100%; border-collapse:collapse; margin:12px 0; font-size:13.5px; }
+  th,td { text-align:left; padding:8px 6px; border-bottom:1px solid var(--border); vertical-align:top; }
+  th { color:var(--muted); font-weight:600; font-size:12px; text-transform:uppercase; letter-spacing:.5px; }
+
+  .q { background:var(--card2); border-radius:10px; padding:13px 14px; margin:10px 0; cursor:pointer; }
+  .q .qt { font-weight:600; font-size:14px; display:flex; gap:8px; }
+  .q .qt::before { content:"Q"; color:var(--accent); font-weight:800; }
+  .q .qa { display:none; margin-top:10px; padding-top:10px; border-top:1px dashed var(--border);
+           font-size:14px; color:var(--muted); }
+  .q.show .qa { display:block; }
+  .q .tap { font-size:11px; color:var(--accent2); margin-top:8px; }
+  .q.show .tap { display:none; }
+
+  .mark { width:100%; margin-top:18px; padding:12px; border-radius:10px; border:1px solid var(--accent2);
+          background:transparent; color:var(--accent2); font-size:14px; font-weight:600; cursor:pointer; }
+  .part.done .mark { background:var(--accent2); color:#04241f; }
+  footer { text-align:center; color:var(--muted); font-size:12px; padding:24px 16px; }
+  footer a { color:var(--accent2); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="htop">
+    <h1>Endurance<span>Hub</span> · Study Guide</h1>
+    <button class="hbtn" onclick="cycleTheme()" id="theme-btn">Theme</button>
+  </div>
+  <div class="bar"><i id="bar"></i></div>
+  <div class="bar-lbl" id="bar-lbl">0 of 11 parts done</div>
+</header>
+
+<main id="parts"></main>
+
+<footer>
+  <a href="/">← Back to the app</a> · <a href="https://github.com/ars231106/Endurance-Hub">Source on GitHub</a>
+</footer>
+
+<script>
+const PARTS = [
+{
+  n:1, title:"What your app actually is", sub:"client, server, database · HTTP",
+  body:`
+<p>Three separate programs talking over a network.</p>
+<ul>
+<li><b>Client</b> — Chrome. Downloads an HTML file, shows it, sends messages when you click.</li>
+<li><b>Server</b> — your Python program on Render. Waits, does work, replies, waits again.</li>
+<li><b>Database</b> — PostgreSQL. A different program whose only job is storing data on disk.</li>
+</ul>
+<div class="note">You proved the database is separate by accident: accounts made on <code>localhost</code> didn't work on the live site. Same code, two different databases.</div>
+<h3>What a message looks like</h3>
+<pre><code>POST /activities HTTP/1.1
+Host: endurancehub-dyq3.onrender.com
+Authorization: Bearer eyJhbGciOiJIUzI1NiIs...
+Content-Type: application/json
+
+{"activity_type":"run","distance_km":5,"duration_min":30,"rpe":6}</code></pre>
+<ul>
+<li><b>Method</b> — the kind of action: GET fetch, POST create, PUT update, DELETE remove</li>
+<li><b>Path</b> — which action</li>
+<li><b>Headers</b> — metadata, including who you are</li>
+<li><b>Body</b> — the data, as JSON</li>
+</ul>
+<h3>Status codes you'll see</h3>
+<table><tr><th>Code</th><th>Means</th></tr>
+<tr><td>200</td><td>fine</td></tr><tr><td>201</td><td>created something</td></tr>
+<tr><td>204</td><td>done, nothing to say</td></tr><tr><td>401</td><td>who are you?</td></tr>
+<tr><td>403</td><td>I know you, but no</td></tr><tr><td>404</td><td>doesn't exist</td></tr>
+<tr><td>409</td><td>conflict (duplicate email)</td></tr><tr><td>422</td><td>your data is malformed</td></tr>
+<tr><td>500</td><td>I crashed</td></tr></table>
+<h3>The idea everything rests on</h3>
+<p>Between requests the server remembers <b>nothing</b> about you. Each request arrives cold. That's called being <b>stateless</b>, and it's why every request must carry proof of who you are.</p>`,
+  qs:[
+   ["Why did your localhost accounts not work on the live site?","Two separate databases. Your laptop's PostgreSQL and Render's PostgreSQL hold different data. Same code, different storage."],
+   ["What does 'stateless' mean and why does it matter?","The server keeps no memory of you between requests. So it can't remember you logged in — every request must carry a token proving who you are."],
+   ["You delete activity 14. What does the browser send?","<code>DELETE /activities/14</code> with the token in the Authorization header. No body needed — the path says what, the header says who."]
+  ]
+},
+{
+  n:2, title:"How Python becomes a web server", sub:"uvicorn · FastAPI · decorators · routers",
+  body:`
+<h3>uvicorn — the doorman</h3>
+<pre><code>uvicorn app.main:app --reload</code></pre>
+<p>Means: go into <code>app/main.py</code>, find the thing called <code>app</code>, serve it. uvicorn holds the network port open, turns incoming text into Python objects, and hands them on. <code>--reload</code> restarts on save — development only.</p>
+<h3>FastAPI — the sorter</h3>
+<p>At startup FastAPI reads every label in your code and builds a list:</p>
+<table><tr><th>Method</th><th>Address</th><th>Function</th></tr>
+<tr><td>POST</td><td>/activities</td><td>create_activity</td></tr>
+<tr><td>GET</td><td>/activities</td><td>list_activities</td></tr>
+<tr><td>DELETE</td><td>/activities/{id}</td><td>delete_activity</td></tr></table>
+<p>A message arrives, it finds the row where <b>both</b> method and address match, and runs that function. Method matters as much as path — same address, different verb, different job.</p>
+<h3>The four places data comes from</h3>
+<p>You never call your own endpoint. FastAPI does — so it has to fill in the arguments. It works out each one from the type hint.</p>
+<table><tr><th>#</th><th>Where</th><th>Looks like</th></tr>
+<tr><td>1</td><td>the address</td><td><code>activity_id: int</code> with <code>{activity_id}</code> in the label</td></tr>
+<tr><td>2</td><td>after the <code>?</code></td><td><code>limit: int = 50</code></td></tr>
+<tr><td>3</td><td>the body</td><td><code>payload: ActivityCreate</code></td></tr>
+<tr><td>4</td><td>another function</td><td><code>db = Depends(get_db)</code></td></tr></table>
+<h3>Which endpoints use which</h3>
+<table><tr><th>Action</th><th>Addr</th><th>?</th><th>Body</th><th>Depends</th></tr>
+<tr><td>POST /activities</td><td>–</td><td>–</td><td>✓</td><td>✓</td></tr>
+<tr><td>GET /activities</td><td>–</td><td>✓</td><td>–</td><td>✓</td></tr>
+<tr><td>GET /activities/14</td><td>✓</td><td>–</td><td>–</td><td>✓</td></tr>
+<tr><td>PUT /activities/14</td><td>✓</td><td>–</td><td>✓</td><td>✓</td></tr>
+<tr><td>DELETE /activities/14</td><td>✓</td><td>–</td><td>–</td><td>✓</td></tr></table>
+<div class="note">The last column is ticked on every row: every endpoint needs a database session and needs to know who's asking.</div>
+<h3>response_model</h3>
+<p>A filter on the way out. You return a full database object; only the fields listed in the schema survive into the JSON. It's why a password hash physically cannot leak.</p>`,
+  qs:[
+   ["What does <code>--reload</code> do, and should it run in production?","Watches your files and restarts the server on save. Development only — your Dockerfile runs uvicorn without it."],
+   ["Why must FastAPI match both method and path?","Same address can mean different things. POST /activities creates one; GET /activities lists them. The verb is half the answer."],
+   ["Why is it <code>Depends(get_db)</code> and not <code>Depends(get_db())</code>?","No brackets means you're pointing at the function so FastAPI can call it at the right moment. With brackets Python would call it immediately, once, at startup."],
+   ["Second page of 20 activities — what URL?","<code>GET /activities?limit=20&offset=20</code>"]
+  ]
+},
+{
+  n:3, title:"Talking to the database", sub:"engine · session · get_db",
+  body:`
+<p>PostgreSQL is a separate program. You must connect first, and connecting is slow (~30ms). Three things solve this.</p>
+<h3>The address</h3>
+<pre><code>DATABASE_URL = os.getenv(
+    "DATABASE_URL",
+    "postgresql://postgres:pass@localhost:5432/endurancehub",
+)</code></pre>
+<p>Look for a setting called <code>DATABASE_URL</code>; if missing, use the local one. That's why the same code runs on your laptop and on Render — Render sets that variable, so your code connects there instead. You never edit the file.</p>
+<div class="note"><b>localhost means "the computer I'm running on."</b> Inside Render's container that's the container itself — which has no database. That's why forgetting <code>DATABASE_URL</code> crashes the deploy.</div>
+<h3>1. The engine</h3>
+<pre><code>engine = create_engine(DATABASE_URL)</code></pre>
+<p>Your phone line to PostgreSQL. Created <b>once</b>. Keeps a few connections open and lends them out, so nobody waits to dial.</p>
+<h3>2. The session factory</h3>
+<pre><code>SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)</code></pre>
+<p>A session is a workspace for one request — a shopping cart. <code>SessionLocal</code> isn't a cart; it's what <i>makes</i> carts. <code>autocommit=False</code> means never check out on its own.</p>
+<h3>3. get_db</h3>
+<pre><code>def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()</code></pre>
+<p>The librarian: fetches the book, hands it over, <b>waits at the desk</b>, puts it away when you return.</p>
+<table><tr><th></th><th>What happens</th></tr>
+<tr><td><code>yield</code></td><td>hand it out and pause; resume after the request</td></tr>
+<tr><td><code>return</code></td><td>function ends immediately, session closes before you can use it</td></tr></table>
+<p><code>finally</code> runs even if the endpoint crashes. Without it, every crash leaks a connection until PostgreSQL refuses new ones and the app freezes.</p>
+<h3>Why one cart per request</h3>
+<p>With a shared cart, your checkout would save someone else's half-finished data, and your crash would undo their work.</p>
+<div class="note"><b>commit</b> writes to PostgreSQL. <b>close</b> just returns the connection. They're different steps — crash before commit and nothing is saved. That all-or-nothing behaviour is called a <b>transaction</b>.</div>`,
+  qs:[
+   ["What breaks if <code>yield</code> becomes <code>return</code>?","The function ends at that line, so <code>finally: db.close()</code> runs immediately. Your endpoint receives an already-closed session and crashes."],
+   ["Engine vs session — how many of each?","One engine per application (a shared pool of connections). One session per request (a private workspace, thrown away afterwards)."],
+   ["Does <code>db.close()</code> save your changes?","No. <code>db.commit()</code> saves. <code>close()</code> only returns the connection. Crash before commit and nothing is written."]
+  ]
+},
+{
+  n:4, title:"Models", sub:"classes that describe tables",
+  body:`
+<p>PostgreSQL stores tables. Python thinks in objects. A <b>model</b> is a Python class describing one table.</p>
+<h3>The register</h3>
+<pre><code>Base = declarative_base()</code></pre>
+<p>A list of tables, empty at first. Any class inheriting from <code>Base</code> is added automatically. Then in <code>main.py</code>:</p>
+<pre><code>Base.metadata.create_all(bind=engine)</code></pre>
+<p>Walk the list, create anything missing. That's why you never wrote <code>CREATE TABLE</code> — and why <code>main.py</code> imports the models even though it "doesn't use" them. Importing runs the class definition, which is what adds it to the list.</p>
+<h3>The User model</h3>
+<pre><code>class User(Base):
+    __tablename__ = "users"
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, nullable=False)
+    email = Column(String, unique=True, nullable=False)
+    password_hash = Column(String, nullable=False)
+    is_verified = Column(Boolean, nullable=False, default=False)</code></pre>
+<table><tr><th>Rule</th><th>Means</th></tr>
+<tr><td>primary_key=True</td><td>identifies the row; PostgreSQL assigns 1,2,3…</td></tr>
+<tr><td>nullable=False</td><td>can never be empty</td></tr>
+<tr><td>unique=True</td><td>no two rows share this value</td></tr>
+<tr><td>index=True</td><td>fast lookups, like a book's index</td></tr>
+<tr><td>default=False</td><td>used when nobody says otherwise</td></tr></table>
+<div class="note">These are enforced by <b>PostgreSQL itself</b>, not just your Python. Even a buggy app can't create two accounts with the same email.</div>
+<h3>Foreign key</h3>
+<pre><code>user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)</code></pre>
+<p>This number must be a real <code>id</code> from the users table. It's how the database knows an activity belongs to a person.</p>
+<h3>Class vs row</h3>
+<pre><code>User                                 # the class = the table
+User(name="Aryan", email="a@b.com")  # an instance = one row</code></pre>
+<h3>Why db.refresh()</h3>
+<p><code>commit()</code> sends Python → PostgreSQL. <code>refresh()</code> brings PostgreSQL → Python. You never set the <code>id</code>; PostgreSQL did. Refresh goes and asks what it assigned, so the response isn't missing it.</p>`,
+  qs:[
+   ["Why does <code>main.py</code> import models it never uses?","Importing runs the class definition, which registers the table on <code>Base</code>. Delete the import and the table silently stops being created."],
+   ["Which direction does <code>db.refresh()</code> move data?","From PostgreSQL into your Python object. <code>commit()</code> goes the other way."],
+   ["Why is <code>unique=True</code> on email better than just checking in Python?","The database enforces it. Even if your code has a bug, or two requests arrive at the same instant, a duplicate is impossible."]
+  ]
+},
+{
+  n:5, title:"Schemas", sub:"Pydantic forms that check incoming data",
+  body:`
+<p>Your API is public. Anyone can send anything. Schemas check every message <b>before</b> your code sees it.</p>
+<h3>Model vs schema</h3>
+<table><tr><th></th><th>Model</th><th>Schema</th></tr>
+<tr><td>Inherits</td><td>Base</td><td>BaseModel</td></tr>
+<tr><td>Describes</td><td>a table</td><td>a message</td></tr>
+<tr><td>Lives</td><td>forever, on disk</td><td>milliseconds, in memory</td></tr>
+<tr><td>Job</td><td>storing</td><td>checking</td></tr></table>
+<pre><code>class User(Base):              # MODEL
+    password_hash = Column(String)
+
+class UserCreate(BaseModel):   # SCHEMA
+    password: str</code></pre>
+<div class="note">That difference <b>is</b> the security boundary. The plain password exists only inside the schema, on its way to being hashed. It never reaches the model, so it never reaches the database.</div>
+<h3>Field rules</h3>
+<pre><code>name: str = Field(min_length=1, max_length=100)
+rpe: int = Field(ge=1, le=10)          # ge = ≥, le = ≤
+distance_km: Optional[float] = Field(default=None, gt=0, le=1000)
+code: str = Field(pattern=r"^\\d{6}$")  # exactly six digits</code></pre>
+<h3>Password rules live on Create, not Login</h3>
+<pre><code>@field_validator("password")
+def password_is_strong(cls, value):
+    missing = [label for pattern, label in PASSWORD_RULES
+               if not re.search(pattern, value)]
+    if missing:
+        raise ValueError("Password must contain " + ", ".join(missing))
+    return value</code></pre>
+<p><code>UserLogin</code> has <b>no</b> rules on purpose. Rules go where a password is <i>chosen</i>, not where it's <i>checked</i> — otherwise anyone with an older password could never log in.</p>
+<h3>The cross-field validator</h3>
+<pre><code>@model_validator(mode="after")
+def check_type_and_distance(self):
+    if self.activity_type not in ACTIVITY_TYPES:
+        raise ValueError(f"Unknown activity type")
+    if self.activity_type in DISTANCE_TYPES:
+        if self.distance_km is None:
+            raise ValueError("requires a distance in km")
+    else:
+        self.distance_km = None      # silently strip it
+    return self</code></pre>
+<p>Field rules check one field alone. This checks two <i>against each other</i>: a run needs a distance, a gym session must not have one. <code>mode="after"</code> means it runs once the individual checks have passed.</p>
+<h3>Three schemas per thing</h3>
+<table><tr><th>Schema</th><th>Direction</th><th>Rules</th></tr>
+<tr><td>ActivityCreate</td><td>in</td><td>everything required</td></tr>
+<tr><td>ActivityUpdate</td><td>in</td><td>everything optional</td></tr>
+<tr><td>ActivityOut</td><td>out</td><td>what the client may see</td></tr></table>
+<h3>constants.py</h3>
+<pre><code>ACTIVITY_TYPES = {"run":"distance", "strength":"strength", ...}
+DISTANCE_TYPES = {t for t,cat in ACTIVITY_TYPES.items() if cat=="distance"}</code></pre>
+<p>One dictionary of sport → category. The distance set is <b>derived</b> from it, so the two can never disagree. Sets make <code>in</code> checks instant.</p>`,
+  qs:[
+   ["Why does UserLogin have no password rules?","Rules belong where a password is chosen. Enforcing them at login would lock out anyone whose password predates the rule, and leaks what passwords must look like."],
+   ["Why does <code>UserOut</code> exist when <code>User</code> already describes a user?","One is what you store, the other is what you send. UserOut has no password_hash, so a hash can't leak into a response even by accident."],
+   ["Why derive DISTANCE_TYPES instead of typing the list twice?","Two hand-written lists can drift apart. Add a sport to one and forget the other, and you get a sport that never asks for a distance."],
+   ["Field validator vs model validator?","A field validator checks one field on its own. A model validator checks fields against each other — like 'runs need a distance, gym sessions must not have one'."]
+  ]
+},
+{
+  n:6, title:"Passwords, registration and OTP", sub:"bcrypt · secrets · the verify flow",
+  body:`
+<h3>Hashing</h3>
+<pre><code>pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+def hash_password(p): return pwd_context.hash(p)
+def verify_password(plain, hashed): return pwd_context.verify(plain, hashed)</code></pre>
+<p>Hashing is a <b>one-way blender</b>. <code>"secret"</code> becomes <code>$2b$12$Xk9...</code> and cannot be reversed. Steal the database and you get smoothies, not fruit.</p>
+<ul>
+<li><b>Salted</b> — a random value mixed in, so the same password hashes differently every time. Defeats precomputed tables.</li>
+<li><b>Slow on purpose</b> — bcrypt is deliberately expensive, making billions of guesses impractical.</li>
+</ul>
+<p>Login doesn't un-hash. It re-hashes your attempt using the salt stored inside the hash, and compares.</p>
+<h3>Register flow</h3>
+<pre><code>if db.query(User).filter(User.email == user.email).first():
+    raise HTTPException(409, "Email already registered")
+
+new_user = User(name=..., email=...,
+                password_hash=hash_password(user.password),
+                is_verified=False)
+db.add(new_user); db.commit(); db.refresh(new_user)
+send_otp_email(new_user.email, issue_otp(db, new_user.email))
+return new_user</code></pre>
+<p>Duplicate check first, so the client gets a clean 409 instead of a raw database crash. Account starts <b>unverified</b>.</p>
+<h3>The OTP</h3>
+<pre><code>code = f"{secrets.randbelow(1_000_000):06d}"</code></pre>
+<p><code>secrets</code>, not <code>random</code> — <code>random</code> is predictable and must never be used for anything security-related.</p>
+<table><tr><th>Protection</th><th>How</th></tr>
+<tr><td>Expiry</td><td>10 minutes</td></tr>
+<tr><td>Brute force</td><td>locked after 5 wrong attempts</td></tr>
+<tr><td>Reuse</td><td>deleted on success</td></tr>
+<tr><td>Spam</td><td>60-second resend cooldown</td></tr>
+<tr><td>Old codes</td><td>reissuing deletes the previous one</td></tr></table>
+<div class="note">6 digits = a million options. Without the attempt limit, a script could try them all in minutes. The lockout is what makes a short code safe.</div>
+<h3>Delivery never crashes</h3>
+<p>The account row is committed <b>before</b> the email is sent. So if mail fails, the send function logs the code instead of raising — otherwise a mail outage would turn a successful registration into a 500.</p>
+<p>Transport is auto-picked: Resend → Brevo → SMTP → log. <b>SMTP fails on Render</b> because cloud hosts block outbound SMTP ports; HTTPS on 443 is never blocked.</p>`,
+  qs:[
+   ["Why are two hashes of the same password different?","Each hash includes a random salt. Without it, identical passwords would produce identical hashes and cracking one would crack them all."],
+   ["Why <code>secrets</code> instead of <code>random</code>?","<code>random</code> is predictable — see enough outputs and you can compute the rest. Fine for shuffling a UI, catastrophic for a verification code."],
+   ["Why is a 6-digit code safe?","On its own it isn't — a million guesses is nothing. The 5-attempt lockout, 10-minute expiry and single use are what make it safe."],
+   ["Why does email delivery never raise?","The user row is already committed. If sending raised, a mail outage would return 500 for an account that was actually created — and the user could never retry with that email."]
+  ]
+},
+{
+  n:7, title:"JWT and protecting routes", sub:"tokens · get_current_user · account deletion",
+  body:`
+<h3>Why a token at all</h3>
+<p>The server is stateless — it remembers nothing between requests. So each request must prove who you are. Sending the password every time would be wrong: possession of it grants access, it never expires, and it would cross the network hundreds of times a day.</p>
+<div class="note">Sending the password <b>hash</b> would be just as bad: the hash would become the credential, so a database leak would hand out working keys.</div>
+<h3>Making a token</h3>
+<pre><code>def create_access_token(data: dict):
+    to_encode = data.copy()
+    to_encode.update({"exp": datetime.utcnow() + timedelta(hours=12)})
+    return jwt.encode(to_encode, SECRET_KEY, algorithm="HS256")</code></pre>
+<p>Payload is <code>{"sub": email, "exp": expiry}</code>. <code>sub</code> is "subject" — whose token this is.</p>
+<p>A JWT has three parts: <code>header.payload.signature</code>.</p>
+<ul>
+<li>The payload is <b>readable by anyone</b> — it's encoded, not encrypted. Never put secrets in it.</li>
+<li>The signature makes it <b>unforgeable</b>. Change one character and the signature no longer matches, and you can't compute a new one without SECRET_KEY.</li>
+</ul>
+<h3>Reading a token</h3>
+<pre><code>def get_current_user(token = Depends(oauth2_scheme), db = Depends(get_db)):
+    credentials_exception = HTTPException(401, "Could not validate credentials")
+    payload = verify_access_token(token)
+    if payload is None: raise credentials_exception
+    email = payload.get("sub")
+    if email is None: raise credentials_exception
+    user = db.query(User).filter(User.email == email).first()
+    if user is None: raise credentials_exception
+    return user</code></pre>
+<p>Three failure points, <b>one identical error</b>. Saying "valid token but no such user" would tell an attacker something useful.</p>
+<p><code>oauth2_scheme</code> reads the <code>Authorization: Bearer …</code> header. A missing header is a 401 before your code runs.</p>
+<h3>Login</h3>
+<pre><code>if not user or not verify_password(credentials.password, user.password_hash):
+    raise HTTPException(401, "Incorrect email or password")
+if not user.is_verified:
+    raise HTTPException(403, "Email not verified")</code></pre>
+<p>Unknown email and wrong password give the <b>same</b> 401, so accounts can't be enumerated. Unverified gets 403 — a different case, and the frontend uses it to switch to the OTP screen.</p>
+<h3>Account deletion</h3>
+<p>Password re-entry is required, so a stolen token alone can't destroy data. It's a <b>soft delete</b>: a timestamp is set, and for 5 days it can be cancelled. A purge job (startup and on login) deletes children before the parent, so foreign keys never break.</p>`,
+  qs:[
+   ["Can someone forge a token claiming to be you?","No. They can build header and payload, but the signature is computed with the server's SECRET_KEY, which they don't have. Verification fails → 401."],
+   ["Is a JWT encrypted?","No — encoded. Anyone can read the payload. It's tamper-proof, not secret. Never put anything sensitive inside it."],
+   ["Why do all three failure paths return the same message?","So an attacker can't tell which check failed. 'Valid token, unknown user' would confirm a token was genuine."],
+   ["Why 401 for wrong password but 403 for unverified?","401 means 'I don't know who you are'. 403 means 'I know you, but you can't do this yet'. The frontend uses the 403 to show the OTP screen."]
+  ]
+},
+{
+  n:8, title:"Activities and ownership", sub:"CRUD · the security-critical bit",
+  body:`
+<h3>The ownership helper</h3>
+<pre><code>def get_owned_activity(activity_id, db, user):
+    activity = (db.query(Activity)
+                  .filter(Activity.id == activity_id,
+                          Activity.user_id == user.id)
+                  .first())
+    if activity is None:
+        raise HTTPException(404, "Activity not found")
+    return activity</code></pre>
+<div class="note">This is the most important code in the app. Filtering on <b>both</b> id and user_id means another user's activity is simply not found — the query can't return it.</div>
+<h3>Why 404 and not 403</h3>
+<p>403 would mean "this exists, but it isn't yours" — which confirms the record exists. 404 makes someone else's data indistinguishable from data that was never there.</p>
+<h3>Creating</h3>
+<pre><code>activity = Activity(user_id=current_user.id, ...)</code></pre>
+<p>The owner comes from the <b>verified token</b>, never from the request body. If it came from the body, anyone could log activities into your account by editing the JSON.</p>
+<h3>Partial update</h3>
+<pre><code>for field, value in payload.model_dump(exclude_unset=True).items():
+    setattr(activity, field, value)</code></pre>
+<p><code>exclude_unset</code> means only fields the client actually sent are applied. Send <code>{"rpe": 9}</code> and everything else stays as it was.</p>
+<pre><code>if activity.activity_type in DISTANCE_TYPES:
+    if activity.distance_km is None:
+        raise HTTPException(422, "requires a distance in km")
+else:
+    activity.distance_km = None</code></pre>
+<p>Re-checked <b>after</b> applying changes, because switching a run to yoga must clear the distance.</p>
+<h3>Listing</h3>
+<pre><code>.filter(Activity.user_id == current_user.id)
+.order_by(Activity.date.desc(), Activity.id.desc())
+.offset(offset).limit(min(limit, 200))</code></pre>
+<p>The cap of 200 stops someone requesting a million rows in one go.</p>`,
+  qs:[
+   ["What single line stops one user reading another's data?","<code>.filter(Activity.id == activity_id, Activity.user_id == user.id)</code> — both conditions, so a wrong owner simply finds nothing."],
+   ["Why 404 instead of 403 for someone else's activity?","403 confirms the record exists. Existence itself is information worth hiding."],
+   ["Why does user_id come from the token and not the body?","Anything in the body is client-controlled. Taking it from the verified token makes impersonation impossible."],
+   ["What does <code>exclude_unset=True</code> do?","Only applies fields the client actually sent, so a partial update doesn't wipe the fields it omitted."]
+  ]
+},
+{
+  n:9, title:"The analytics engine", sub:"the formulas — the interesting part",
+  body:`
+<h3>Training load (session-RPE)</h3>
+<pre><code>load = duration_min × rpe</code></pre>
+<p>Works for <b>every</b> sport, which is why it — not distance — is the headline metric. A 45-minute gym session at RPE 8 = 360, comparable to a run.</p>
+<h3>ACWR — acute:chronic workload ratio</h3>
+<pre><code>acwr = last 7 days of load ÷ (last 28 days ÷ 4)</code></pre>
+<table><tr><th>Value</th><th>Meaning</th></tr>
+<tr><td>&lt; 0.8</td><td>detraining</td></tr>
+<tr><td>0.8 – 1.3</td><td>optimal</td></tr>
+<tr><td>1.3 – 1.5</td><td>elevated</td></tr>
+<tr><td>&gt; 1.5</td><td>spike — the injury-risk pattern</td></tr></table>
+<p>Needs at least 14 days of history, otherwise it's meaningless.</p>
+<h3>Monotony and strain (Foster)</h3>
+<pre><code>monotony = mean daily load ÷ standard deviation of daily load
+strain   = weekly load × monotony</code></pre>
+<p>Above ~2.0 means every day looks the same, which predicts staleness. Good weeks have genuinely hard and genuinely easy days.</p>
+<div class="note"><b>Two edge cases worth quoting in an interview.</b> Identical load every day gives SD 0 — that's <i>maximum</i> monotony, not an absence of it, so it's capped and labelled. And fewer than 3 training days makes the ratio meaningless, because rest days dominate the spread, so it's withheld.</div>
+<h3>Threshold pace</h3>
+<p>Roughly the pace you could hold for an hour. Estimated as your fastest session past a <b>sport-specific</b> minimum — 3 km for a run, 8 km on a bike, 0.4 km in a pool. One global minimum would have excluded swimmers entirely. Sports with no qualifying session fall back to a default flagged <code>is_default: true</code>.</p>
+<h3>Estimated RPE — two routes</h3>
+<pre><code># from pace (distance sports, no hardware)
+IF  = threshold pace ÷ session pace
+rpe = 1 + 9 × (IF − 0.55) ÷ 0.5
+
+# from heart rate (any sport, needs a monitor)
+%HRR = (HRavg − HRrest) ÷ (HRmax − HRrest)     # Karvonen
+rpe  = %HRR × 10
+HRmax = 208 − 0.7 × age                        # Tanaka</code></pre>
+<p>Heart rate wins when both are available, because it measures internal load rather than output. Karvonen is used over plain %HRmax because it positions the session between <i>your</i> resting and max, not as a raw percentage.</p>
+<h3>Average pace</h3>
+<p>Divides by the time spent in <b>distance sports only</b>. Include gym time and a 55-minute strength session would wreck your min/km even though you covered no ground.</p>`,
+  qs:[
+   ["Why is training load the headline metric instead of distance?","Load = duration × RPE works for every sport. Distance is meaningless for a gym session or a football match."],
+   ["What ACWR value would worry you and why?","Above 1.5 — this week is far above your four-week average, the spike pattern associated with injury risk."],
+   ["Zero variance in daily load — what should monotony report?","Maximum monotony. SD is 0 so the ratio is infinite; reporting 'not enough variation' would be exactly backwards."],
+   ["Why is average pace calculated only over distance sports?","Otherwise time spent in the gym, covering no distance, would drag your minutes-per-km down and make the number meaningless."],
+   ["Why sport-specific minimums for threshold pace?","3 km is a warm-up on a bike and a long way in a pool. A single global minimum would have excluded swimmers from ever getting an estimate."]
+  ]
+},
+{
+  n:10, title:"The frontend", sub:"one file, no framework",
+  body:`
+<p>The whole app is one <code>index.html</code> — landing page, auth screens and dashboard, served by FastAPI itself.</p>
+<h3>Why FastAPI serves it</h3>
+<p>Opening it as a <code>file://</code> page gives the browser no real origin. That breaks the password manager (the Credential Management API needs a secure context) and makes OAuth impossible. Served from <code>http://localhost:8000</code> it's a proper origin — and frontend and API become same-origin, so CORS disappears.</p>
+<h3>One state object</h3>
+<pre><code>const state = { me, activities, summary, weekly, records,
+                streak, filter, scope, sort, weeks, goals };</code></pre>
+<p>Every render function reads from here. One refresh reloads everything, so no widget can disagree with another.</p>
+<h3>The fetch wrapper</h3>
+<pre><code>async function api(method, path, body) {
+  const headers = {"Content-Type":"application/json"};
+  const token = localStorage.getItem("token");
+  if (token) headers["Authorization"] = "Bearer " + token;
+  ...
+  if (resp.status === 401) { logout(); throw ... }
+}</code></pre>
+<p>One place attaches the token, parses JSON, and turns errors into readable messages. Written once, used by every call.</p>
+<h3>Remember me</h3>
+<p>Only the <b>email</b> goes in localStorage. The password is handed to the browser's Credential Management API, which stores it in the OS keychain. Anything in localStorage is readable by any JavaScript on the page — one XSS bug and the password is gone.</p>
+<h3>Password generator</h3>
+<p>Uses <code>crypto.getRandomValues</code>, never <code>Math.random</code>. Takes one character from each required set, fills the rest, then shuffles — so it satisfies every rule <b>by construction</b> rather than by chance.</p>
+<h3>Theming</h3>
+<p>System / Light / Dark. "System" removes the attribute so the <code>prefers-color-scheme</code> media query takes over. A tiny script in <code>&lt;head&gt;</code> applies the saved choice <b>before</b> the page paints, so there's no flash of the wrong theme.</p>`,
+  qs:[
+   ["Why can't you just open index.html as a file?","file:// isn't a secure context, so the browser's password manager won't work and OAuth redirects are rejected. Serving it over http://localhost fixes both and removes CORS."],
+   ["Why is the password not in localStorage?","Any JavaScript running on the page can read localStorage — one XSS bug and the password leaks. The OS keychain only releases it to a matching form on a matching origin."],
+   ["Why <code>crypto.getRandomValues</code> over <code>Math.random</code>?","Math.random is predictable from previous outputs. Never use it for anything security-related."]
+  ]
+},
+{
+  n:11, title:"Tests, CI/CD and deployment", sub:"the outer layers",
+  body:`
+<h3>The test suite</h3>
+<p>pytest with FastAPI's <code>TestClient</code>, running in-process against a throwaway database — no server to start.</p>
+<pre><code>@pytest.fixture
+def verified_user(client, unique_email):
+    client.post("/register", json={...})
+    resp = client.post("/verify-email", json={"code": read_otp(...)})
+    return {"headers": {"Authorization": f"Bearer {token}"}, ...}</code></pre>
+<p>A <b>fixture</b> is reusable setup. This one registers and verifies an account so tests can start from "logged in".</p>
+<div class="note">The test worth pointing at: <code>test_users_cannot_see_or_touch_each_others_activities</code>. Two accounts, second tries to read/update/delete the first's activity, all three must return 404. Authorisation bugs are the ones that matter and are invisible when you only ever test as yourself.</div>
+<h3>CI — five jobs on every push</h3>
+<table><tr><th>Job</th><th>Why</th></tr>
+<tr><td>Ruff lint</td><td>catches unused imports, undefined names</td></tr>
+<tr><td>pytest on SQLite</td><td>fast feedback</td></tr>
+<tr><td>pytest on PostgreSQL 16</td><td>SQLite alone hides dialect-specific bugs</td></tr>
+<tr><td>Frontend checks</td><td>script syntax, broken icon refs, duplicate IDs, orphaned handlers</td></tr>
+<tr><td>Docker build</td><td>builds the image, starts it, polls /health</td></tr></table>
+<h3>schema_sync.py</h3>
+<p><code>create_all()</code> creates missing <b>tables</b> but never missing <b>columns</b>. Every new field crashed with "column does not exist" until this existed. It applies idempotent additive changes at startup — <code>ADD COLUMN IF NOT EXISTS</code>, and <code>DROP NOT NULL</code>, which is a no-op once already dropped.</p>
+<div class="note">The grown-up answer is <b>Alembic</b>, which does versioned, reversible migrations including destructive ones like renaming or dropping. This only handles the additive case. Knowing the limit matters more than the code.</div>
+<h3>Deployment</h3>
+<p>One Docker image holds API and frontend. <code>render.yaml</code> provisions the web service and PostgreSQL together, generates SECRET_KEY, wires DATABASE_URL in, and auto-deploys on every push to main. The health check gates traffic — a broken build never goes live.</p>
+<h3>The production bug worth telling</h3>
+<p>Gmail SMTP worked locally and failed on Render with <code>[Errno 101] Network is unreachable</code>. Cloud hosts block outbound SMTP as anti-spam. Fix: send over an HTTPS email API instead, since port 443 is never blocked — and make delivery non-fatal, because the account row commits before the email goes out.</p>`,
+  qs:[
+   ["Why run the tests on both SQLite and PostgreSQL?","SQLite is fast for feedback but behaves differently. Production is Postgres, so dialect-specific bugs would otherwise only appear after deploying."],
+   ["Why doesn't <code>create_all()</code> handle schema changes?","It only creates missing tables. Adding a column to an existing table does nothing, so the app crashes with 'column does not exist'."],
+   ["What's the limit of schema_sync.py?","It only does additive changes. Renaming or dropping a column needs versioned migrations — Alembic."],
+   ["Why did email work locally but not on Render?","Cloud hosts block outbound SMTP ports to prevent spam. Switching to an HTTPS email API fixed it, since 443 is never blocked."]
+  ]
+}];
+
+/* ---------- render ---------- */
+const root = document.getElementById("parts");
+const done = JSON.parse(localStorage.getItem("eh-progress") || "[]");
+
+root.innerHTML = PARTS.map(p => `
+  <section class="part ${done.includes(p.n) ? "done" : ""}" id="p${p.n}">
+    <div class="part-head" onclick="togglePart(${p.n})">
+      <div class="part-num">${done.includes(p.n) ? "✓" : p.n}</div>
+      <div class="part-title">${p.title}<small>${p.sub}</small></div>
+      <div class="chev">▶</div>
+    </div>
+    <div class="part-body">
+      ${p.body}
+      <h3>Test yourself</h3>
+      ${p.qs.map((q, i) => `
+        <div class="q" onclick="this.classList.toggle('show')">
+          <div class="qt">${q[0]}</div>
+          <div class="qa">${q[1]}</div>
+          <div class="tap">tap to reveal</div>
+        </div>`).join("")}
+      <button class="mark" onclick="event.stopPropagation(); toggleDone(${p.n})">
+        ${done.includes(p.n) ? "Done ✓" : "Mark as understood"}
+      </button>
+    </div>
+  </section>`).join("");
+
+function togglePart(n) {
+  const el = document.getElementById("p" + n);
+  el.classList.toggle("open");
+  if (el.classList.contains("open")) el.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function toggleDone(n) {
+  const i = done.indexOf(n);
+  if (i === -1) done.push(n); else done.splice(i, 1);
+  localStorage.setItem("eh-progress", JSON.stringify(done));
+  location.reload();
+}
+
+function updateBar() {
+  const pct = (done.length / PARTS.length) * 100;
+  document.getElementById("bar").style.width = pct + "%";
+  document.getElementById("bar-lbl").textContent = `${done.length} of ${PARTS.length} parts done`;
+}
+updateBar();
+
+/* ---------- theme ---------- */
+function cycleTheme() {
+  const order = ["system", "light", "dark"];
+  const now = localStorage.getItem("theme") || "system";
+  const next = order[(order.indexOf(now) + 1) % 3];
+  localStorage.setItem("theme", next);
+  applyTheme(next);
+}
+function applyTheme(mode) {
+  if (mode === "system") document.documentElement.removeAttribute("data-theme");
+  else document.documentElement.setAttribute("data-theme", mode);
+  document.getElementById("theme-btn").textContent =
+    mode === "system" ? "Auto" : mode === "light" ? "Light" : "Dark";
+}
+applyTheme(localStorage.getItem("theme") || "system");
+</script>
+</body>
+</html>
