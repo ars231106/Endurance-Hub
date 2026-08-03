@@ -80,11 +80,46 @@ def test_every_distance_sport_gets_a_threshold(client, athlete):
     t = client.get("/analytics/thresholds", headers=athlete).json()
     assert set(t) == {"run", "ride", "swim", "row", "hike", "walk"}
     # The 10 km run qualifies, so running is personalised...
-    assert t["run"]["is_default"] is False
+    assert t["run"]["source"] == "personal"
+    assert t["run"]["is_default"] is False        # kept for older clients
     assert t["run"]["qualifying_sessions"] >= 1
-    # ...while untouched sports fall back to a flagged default.
-    assert t["swim"]["is_default"] is True
+    assert t["run"]["based_on"]["distance_km"] == 10
+    # ...while untouched sports fall back to a labelled default.
+    assert t["swim"]["source"] == "default"
+    assert t["swim"]["based_on"] is None
     assert t["swim"]["threshold_pace_min_per_km"] > 0
+
+
+def test_short_efforts_give_an_estimated_threshold(client, verified_user):
+    """A beginner whose longest run is 2 km should still get a personal
+    number, adjusted to be slower than their short-effort pace."""
+    h = verified_user["headers"]
+    client.post("/activities", json={
+        "activity_type": "run", "distance_km": 2, "duration_min": 14, "rpe": 7,
+    }, headers=h)
+
+    t = client.get("/analytics/thresholds", headers=h).json()["run"]
+    assert t["source"] == "estimated"
+    assert t["based_on"]["distance_km"] == 2
+    # 2 km in 14 min is 7:00/km; the hour estimate must be slower than that.
+    assert t["threshold_pace_min_per_km"] > 7.0
+    # ...but not absurdly so - the Riegel correction is capped at 15%.
+    assert t["threshold_pace_min_per_km"] < 7.0 * 1.15 + 0.01
+
+
+def test_old_sessions_are_ignored(client, verified_user):
+    """A personal best from a year ago must not keep the threshold
+    optimistic forever - only the recent window counts."""
+    h = verified_user["headers"]
+    long_ago = (date.today() - timedelta(days=200)).isoformat()
+    client.post("/activities", json={
+        "activity_type": "run", "distance_km": 10, "duration_min": 40,
+        "rpe": 9, "date": long_ago,
+    }, headers=h)
+
+    t = client.get("/analytics/thresholds", headers=h).json()["run"]
+    assert t["source"] == "default", "a 200-day-old session should not count"
+    assert t["lookback_days"] == 90
 
 
 def test_by_sport_totals(client, athlete):

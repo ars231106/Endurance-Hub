@@ -8,8 +8,13 @@ from sqlalchemy.orm import Session
 from app.constants import (
     DEFAULT_THRESHOLD_PACE,
     DISTANCE_TYPES,
+    RIEGEL_EXPONENT,
+    RIEGEL_MAX_FACTOR,
+    THRESHOLD_LOOKBACK_DAYS,
     THRESHOLD_MIN_KM,
     THRESHOLD_MIN_MINUTES,
+    THRESHOLD_SHORT_MIN_MINUTES,
+    THRESHOLD_TARGET_MINUTES,
 )
 from app.databases.database import get_db
 from app.dependencies import get_current_user
@@ -250,6 +255,15 @@ def load_metrics(
     }
 
 
+def _riegel_factor(minutes: float) -> float:
+    """How much slower than a short effort's pace the ~60 minute threshold
+    pace is likely to be. You can hold a faster pace for 10 minutes than
+    for an hour, so a short session overstates fitness unless corrected.
+    Capped so a very short sprint can't produce a wild number."""
+    factor = (THRESHOLD_TARGET_MINUTES / minutes) ** RIEGEL_EXPONENT
+    return min(factor, RIEGEL_MAX_FACTOR)
+
+
 @router.get("/thresholds")
 def thresholds(
     db: Session = Depends(get_db),
@@ -257,48 +271,92 @@ def thresholds(
 ):
     """Estimated threshold pace for every distance sport.
 
-    Threshold pace is roughly the effort you could hold for an hour. The
-    usual field proxy is your fastest sustained session, so we take the
-    quickest one past a sport-specific distance and time minimum. Sports
-    without a qualifying session fall back to a sensible default, flagged
-    with is_default so the UI can say it isn't personalised yet. Estimates
-    from training data, not lab tests.
-    """
-    acts = _user_activities(db, current_user)
+    Threshold pace is roughly the effort you could hold for an hour, and
+    it's the yardstick the RPE suggestion measures a session against.
 
-    best = {}      # sport -> fastest qualifying activity
-    counts = {}    # sport -> how many sessions qualified
-    for a in acts:
+    Three tiers, best first:
+      personal  - fastest session past this sport's distance/time minimum
+      estimated - fastest shorter effort, corrected via Riegel
+      default   - a generic value, when there's no history at all
+
+    Only the last THRESHOLD_LOOKBACK_DAYS count, so the number tracks
+    current fitness instead of a personal best that may be long gone.
+    Every response says which tier it came from and what it was based on,
+    so the UI can be honest about how much to trust it.
+    """
+    cutoff = date.today() - timedelta(days=THRESHOLD_LOOKBACK_DAYS)
+
+    best_full, best_short, counts = {}, {}, {}
+
+    for a in _user_activities(db, current_user):
         if a.activity_type not in DISTANCE_TYPES or not a.distance_km:
             continue
-        min_km = THRESHOLD_MIN_KM.get(a.activity_type, 3.0)
-        if a.duration_min < THRESHOLD_MIN_MINUTES or a.distance_km < min_km:
+        if a.date < cutoff:
             continue
-        counts[a.activity_type] = counts.get(a.activity_type, 0) + 1
+
         pace = a.duration_min / a.distance_km
-        cur = best.get(a.activity_type)
-        if cur is None or pace < cur[0]:
-            best[a.activity_type] = (pace, a)
+        min_km = THRESHOLD_MIN_KM.get(a.activity_type, 3.0)
+
+        if a.duration_min >= THRESHOLD_MIN_MINUTES and a.distance_km >= min_km:
+            counts[a.activity_type] = counts.get(a.activity_type, 0) + 1
+            current = best_full.get(a.activity_type)
+            if current is None or pace < current[0]:
+                best_full[a.activity_type] = (pace, a)
+
+        elif a.duration_min >= THRESHOLD_SHORT_MIN_MINUTES:
+            # Too short to count directly, but still evidence. Adjust it
+            # to what the same athlete could likely hold for an hour.
+            adjusted = pace * _riegel_factor(a.duration_min)
+            current = best_short.get(a.activity_type)
+            if current is None or adjusted < current[0]:
+                best_short[a.activity_type] = (adjusted, a, pace)
+
+    def based_on(a, raw_pace=None):
+        info = {
+            "activity_id": a.id,
+            "date": a.date.isoformat(),
+            "distance_km": a.distance_km,
+            "duration_min": a.duration_min,
+        }
+        if raw_pace is not None:
+            info["raw_pace_min_per_km"] = round(raw_pace, 2)
+        return info
 
     out = {}
     for sport in DISTANCE_TYPES:
-        if sport in best:
-            pace, a = best[sport]
-            out[sport] = {
+        if sport in best_full:
+            pace, a = best_full[sport]
+            entry = {
                 "threshold_pace_min_per_km": round(pace, 2),
-                "is_default": False,
+                "source": "personal",
                 "qualifying_sessions": counts.get(sport, 0),
-                "from_activity_id": a.id,
-                "from_date": a.date.isoformat(),
+                "based_on": based_on(a),
             }
-        else:
-            out[sport] = {
-                "threshold_pace_min_per_km": DEFAULT_THRESHOLD_PACE[sport],
-                "is_default": True,
+        elif sport in best_short:
+            adjusted, a, raw = best_short[sport]
+            entry = {
+                "threshold_pace_min_per_km": round(adjusted, 2),
+                "source": "estimated",
                 "qualifying_sessions": 0,
+                "based_on": based_on(a, raw),
                 "needs_km": THRESHOLD_MIN_KM.get(sport, 3.0),
                 "needs_minutes": THRESHOLD_MIN_MINUTES,
             }
+        else:
+            entry = {
+                "threshold_pace_min_per_km": DEFAULT_THRESHOLD_PACE[sport],
+                "source": "default",
+                "qualifying_sessions": 0,
+                "based_on": None,
+                "needs_km": THRESHOLD_MIN_KM.get(sport, 3.0),
+                "needs_minutes": THRESHOLD_MIN_MINUTES,
+            }
+
+        # Kept so existing clients don't break when "source" replaces it.
+        entry["is_default"] = entry["source"] == "default"
+        entry["lookback_days"] = THRESHOLD_LOOKBACK_DAYS
+        out[sport] = entry
+
     return out
 
 

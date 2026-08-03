@@ -2605,11 +2605,20 @@ function suggestedRpe() {
 
   const intensity = th.threshold_pace_min_per_km / (dur / dist);
   const rpe = Math.round(1 + 9 * (intensity - 0.55) / (1.05 - 0.55));
+
+  // Say where the threshold came from, so the user knows how much to
+  // trust the suggestion rather than seeing a bare number.
+  const provenance = {
+    personal: th.based_on ? `from your ${th.based_on.distance_km} km on ${shortDate(th.based_on.date)}` : "from your training",
+    estimated: th.based_on ? `estimated from your ${th.based_on.distance_km} km — log a longer one to sharpen it` : "estimated",
+    default: "typical value — not personalised yet",
+  }[th.source || (th.is_default ? "default" : "personal")];
+
   return {
     rpe: Math.max(1, Math.min(10, rpe)),
     via: "pace",
     detail: `${intensity.toFixed(2)}× your ${formatPace(th.threshold_pace_min_per_km)}/km threshold`,
-    isDefault: th.is_default,
+    provenance,
   };
 }
 
@@ -2636,7 +2645,7 @@ function updateRpeSuggestion() {
     <div class="rpe-suggest">
       ${ic(s.via === "hr" ? "heart" : "trend")}
       <span>${s.via === "hr" ? "Heart rate" : "Pace"} suggests <b>RPE ${s.rpe}</b><br>
-        <small>${s.detail}${s.isDefault ? " · typical default, improves once you log a longer session" : ""}</small>
+        <small>${s.detail}${s.provenance ? " · " + s.provenance : ""}</small>
       </span>
       <button onclick="applySuggestedRpe(${s.rpe})">Use it</button>
     </div>`;
@@ -2802,6 +2811,10 @@ function formatDate(iso) {
 
 function longDate(iso) {
   return new Date(iso + "T00:00:00").toLocaleDateString(undefined, { day: "numeric", month: "long", year: "numeric" });
+}
+
+function shortDate(iso) {
+  return new Date(iso + "T00:00:00").toLocaleDateString(undefined, { day: "numeric", month: "short" });
 }
 
 function escapeHtml(s) {
