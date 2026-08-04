@@ -66,13 +66,22 @@
     }
   }
 
-  /* Theme switch: three segments, one active. */
-  .theme-switch { display: flex; gap: 2px; padding: 3px; background: var(--card); border: 1px solid var(--border); border-radius: 30px; }
-  .theme-switch button { display: flex; align-items: center; justify-content: center; width: 30px; height: 26px;
+  /* Theme switch: three equal segments in a pill, one active. Fixed sizes
+     so the three stay square-ish and the pill keeps its shape at every
+     width rather than stretching. */
+  .theme-switch { display: flex; align-items: center; gap: 2px; padding: 3px; flex-shrink: 0;
+    background: var(--card); border: 1px solid var(--border); border-radius: 30px; }
+  .theme-switch button { display: flex; align-items: center; justify-content: center;
+    width: 30px; height: 26px; flex: 0 0 auto; padding: 0;
     background: none; border: none; border-radius: 30px; color: var(--muted); cursor: pointer; transition: all .2s; }
   .theme-switch button:hover { color: var(--text); background: var(--card2); }
   .theme-switch button.on { background: var(--accent); color: #fff; }
   .theme-switch .ic { width: 15px; height: 15px; }
+  @media (max-width: 640px) {
+    .theme-switch { padding: 2px; }
+    .theme-switch button { width: 26px; height: 23px; }
+    .theme-switch .ic { width: 13px; height: 13px; }
+  }
   * { margin: 0; padding: 0; box-sizing: border-box; }
   html { scroll-behavior: smooth; }
   body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; overflow-x: hidden; line-height: 1.5; }
@@ -136,9 +145,21 @@
   .nav-links { display: flex; gap: 26px; font-size: 14px; color: var(--muted); }
   .nav-links a { transition: color .2s; }
   .nav-links a:hover { color: var(--text); }
-  .nav-actions { display: flex; gap: 10px; }
-  .nav-actions .btn, .nav-actions .btn-ghost { padding: 9px 20px; font-size: 14px; }
+  .nav-actions { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+  .nav-actions .btn, .nav-actions .btn-ghost { padding: 9px 20px; font-size: 14px; white-space: nowrap; }
+  .logo { flex-shrink: 0; }
   @media (max-width: 900px) { .nav-links { display: none; } }
+
+  /* Below ~640px the logo, theme switch and two buttons no longer fit on
+     one line, so "Log in" is dropped - the auth screen it opens has a
+     Log in tab anyway, so nothing becomes unreachable. */
+  @media (max-width: 640px) {
+    nav { padding: 12px 4vw; gap: 8px; }
+    .logo { font-size: 17px; }
+    .nav-actions { gap: 7px; }
+    .nav-actions .btn-ghost { display: none; }
+    .nav-actions .btn { padding: 9px 16px; font-size: 13px; }
+  }
 
   /* ---------- hero ---------- */
   .hero { position: relative; z-index: 1; display: grid; grid-template-columns: 1.05fr .95fr; gap: 50px; align-items: center; max-width: var(--maxw); margin: 0 auto; padding: 150px 5vw 70px; }
@@ -374,6 +395,17 @@
   .menu button:hover { background: var(--card2); color: var(--text); }
   .menu button.danger:hover { color: var(--danger); }
   @media (max-width: 780px) { .bar-nav { display: none; } }
+  /* Same squeeze on the dashboard bar: the round quick-add duplicates the
+     Log activity button, so it goes first, then the button loses its label. */
+  @media (max-width: 640px) {
+    header.app-bar { padding: 0 4vw; gap: 10px; }
+    .bar-left { gap: 0; }
+    .logo { font-size: 17px; }
+    .bar-right { gap: 8px; }
+    .round-btn { display: none; }
+    .bar-btn { padding: 9px 13px; font-size: 13px; }
+    .bar-btn .btn-label { display: none; }
+  }
 
   .dash { max-width: 1240px; margin: 0 auto; padding: 26px 3vw 0; }
 
@@ -1187,7 +1219,7 @@
         <button data-theme-val="light" title="Light" aria-label="Light theme"><svg class="ic"><use href="#i-sun"/></svg></button>
         <button data-theme-val="dark" title="Dark" aria-label="Dark theme"><svg class="ic"><use href="#i-moon"/></svg></button>
       </div>
-      <button class="bar-btn" onclick="openLogModal()"><svg class="ic sm"><use href="#i-plus"/></svg> Log activity</button>
+      <button class="bar-btn" onclick="openLogModal()"><svg class="ic sm"><use href="#i-plus"/></svg><span class="btn-label"> Log activity</span></button>
       <button class="round-btn" title="Quick add (N)" onclick="openLogModal()"><svg class="ic sm"><use href="#i-plus"/></svg></button>
       <div class="menu-wrap">
         <div class="avatar" id="avatar" onclick="toggleMenu(event)"></div>

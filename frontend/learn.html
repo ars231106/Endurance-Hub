@@ -29,14 +29,14 @@
   h1 { font-size:18px; font-weight:800; letter-spacing:-.3px; }
   h1 span { color:var(--accent); }
   .hbtn { background:var(--card); border:1px solid var(--border); color:var(--muted); font-size:12px;
-          padding:7px 12px; border-radius:20px; cursor:pointer; }
+          padding:7px 12px; border-radius:20px; cursor:pointer; white-space:nowrap; }
   .hbtn:active { transform:scale(.95); }
   .bar { height:4px; background:var(--card2); border-radius:4px; margin-top:12px; overflow:hidden; }
   .bar i { display:block; height:100%; background:linear-gradient(90deg,var(--accent),var(--accent2));
            width:0; transition:width .4s; }
   .bar-lbl { font-size:11px; color:var(--muted); margin-top:6px; }
 
-  main { max-width:820px; margin:0 auto; padding:16px; }
+  main { max-width:860px; margin:0 auto; padding:16px; }
 
   .part { background:var(--card); border:1px solid var(--border); border-radius:14px; margin-bottom:12px; overflow:hidden; }
   .part-head { display:flex; align-items:center; gap:12px; padding:16px; cursor:pointer; user-select:none; }
@@ -50,9 +50,10 @@
   .part-body { display:none; padding:0 16px 16px; border-top:1px solid var(--border); }
   .part.open .part-body { display:block; }
 
-  h3 { font-size:15px; margin:20px 0 8px; color:var(--accent); }
+  h3 { font-size:15px; margin:22px 0 8px; color:var(--accent); }
+  h4 { font-size:13.5px; margin:16px 0 6px; color:var(--accent2); }
   p { margin:10px 0; }
-  ul { margin:10px 0 10px 20px; }
+  ul,ol { margin:10px 0 10px 20px; }
   li { margin:5px 0; }
   b { font-weight:600; }
   code { background:var(--code); padding:2px 6px; border-radius:5px; font-size:13px;
@@ -60,6 +61,8 @@
   pre { background:var(--code); border:1px solid var(--border); border-radius:10px; padding:12px;
         overflow-x:auto; margin:12px 0; }
   pre code { background:none; padding:0; font-size:12.5px; line-height:1.6; white-space:pre; }
+  .file { font-size:11px; color:var(--muted); font-family:Consolas,monospace; margin:16px 0 -6px;
+          letter-spacing:.4px; }
   .note { background:var(--card2); border-left:3px solid var(--accent); border-radius:0 8px 8px 0;
           padding:10px 12px; margin:12px 0; font-size:14px; }
   table { width:100%; border-collapse:collapse; margin:12px 0; font-size:13.5px; }
@@ -90,7 +93,7 @@
     <button class="hbtn" onclick="cycleTheme()" id="theme-btn">Theme</button>
   </div>
   <div class="bar"><i id="bar"></i></div>
-  <div class="bar-lbl" id="bar-lbl">0 of 11 parts done</div>
+  <div class="bar-lbl" id="bar-lbl">0 of 14 parts done</div>
 </header>
 
 <main id="parts"></main>
@@ -102,15 +105,15 @@
 <script>
 const PARTS = [
 {
-  n:1, title:"What your app actually is", sub:"client, server, database · HTTP",
+  n:1, title:"What your app actually is", sub:"client · server · database · HTTP",
   body:`
 <p>Three separate programs talking over a network.</p>
 <ul>
 <li><b>Client</b> — Chrome. Downloads an HTML file, shows it, sends messages when you click.</li>
 <li><b>Server</b> — your Python program on Render. Waits, does work, replies, waits again.</li>
-<li><b>Database</b> — PostgreSQL. A different program whose only job is storing data on disk.</li>
+<li><b>Database</b> — PostgreSQL. A different program whose only job is storing data on disk so it survives restarts.</li>
 </ul>
-<div class="note">You proved the database is separate by accident: accounts made on <code>localhost</code> didn't work on the live site. Same code, two different databases.</div>
+<div class="note">You proved the third one exists by accident: accounts made on <code>localhost</code> didn't work on the live site. Same code, two different databases. If the server <i>were</i> the storage, that couldn't happen.</div>
 <h3>What a message looks like</h3>
 <pre><code>POST /activities HTTP/1.1
 Host: endurancehub-dyq3.onrender.com
@@ -118,429 +121,1598 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIs...
 Content-Type: application/json
 
 {"activity_type":"run","distance_km":5,"duration_min":30,"rpe":6}</code></pre>
-<ul>
-<li><b>Method</b> — the kind of action: GET fetch, POST create, PUT update, DELETE remove</li>
-<li><b>Path</b> — which action</li>
-<li><b>Headers</b> — metadata, including who you are</li>
-<li><b>Body</b> — the data, as JSON</li>
-</ul>
-<h3>Status codes you'll see</h3>
-<table><tr><th>Code</th><th>Means</th></tr>
-<tr><td>200</td><td>fine</td></tr><tr><td>201</td><td>created something</td></tr>
-<tr><td>204</td><td>done, nothing to say</td></tr><tr><td>401</td><td>who are you?</td></tr>
-<tr><td>403</td><td>I know you, but no</td></tr><tr><td>404</td><td>doesn't exist</td></tr>
-<tr><td>409</td><td>conflict (duplicate email)</td></tr><tr><td>422</td><td>your data is malformed</td></tr>
-<tr><td>500</td><td>I crashed</td></tr></table>
+<table><tr><th>Part</th><th>Meaning</th></tr>
+<tr><td>Method</td><td>the kind of action — GET fetch, POST create, PUT update, DELETE remove</td></tr>
+<tr><td>Path</td><td>which action</td></tr>
+<tr><td>Headers</td><td>metadata, including who you are</td></tr>
+<tr><td>Body</td><td>the data, as JSON</td></tr></table>
+<h3>Status codes in your app</h3>
+<table><tr><th>Code</th><th>Where yours uses it</th></tr>
+<tr><td>200</td><td>login, /me, updates</td></tr>
+<tr><td>201</td><td>register, create activity</td></tr>
+<tr><td>204</td><td>delete activity — success, empty body</td></tr>
+<tr><td>401</td><td>bad password, bad token</td></tr>
+<tr><td>403</td><td>correct password, email not verified</td></tr>
+<tr><td>404</td><td>missing activity, or someone else's</td></tr>
+<tr><td>409</td><td>email already registered</td></tr>
+<tr><td>422</td><td>malformed data — Pydantic rejected it</td></tr>
+<tr><td>429</td><td>OTP resend cooldown</td></tr>
+<tr><td>500</td><td>unhandled crash</td></tr></table>
+<h3>You've watched this in the logs</h3>
+<pre><code>INFO: "GET /health HTTP/1.1" 200 OK
+INFO: "POST /resend-otp HTTP/1.1" 429 Too Many Requests</code></pre>
+<p>Line one is Render itself pinging your health check every few seconds. Line two is your own 60-second cooldown rejecting a resend. Every line in that log is one request and one response.</p>
 <h3>The idea everything rests on</h3>
-<p>Between requests the server remembers <b>nothing</b> about you. Each request arrives cold. That's called being <b>stateless</b>, and it's why every request must carry proof of who you are.</p>`,
+<p>Between requests the server remembers <b>nothing</b> about you. Each request arrives cold. That's <b>stateless</b>, and it's the entire reason the <code>Authorization</code> header exists — the server can't remember you logged in a minute ago, so every request must carry proof.</p>`,
   qs:[
    ["Why did your localhost accounts not work on the live site?","Two separate databases. Your laptop's PostgreSQL and Render's PostgreSQL hold different data. Same code, different storage."],
-   ["What does 'stateless' mean and why does it matter?","The server keeps no memory of you between requests. So it can't remember you logged in — every request must carry a token proving who you are."],
-   ["You delete activity 14. What does the browser send?","<code>DELETE /activities/14</code> with the token in the Authorization header. No body needed — the path says what, the header says who."]
+   ["What does stateless mean and why does it matter?","The server keeps no memory of you between requests, so it can't remember you logged in. Every request must carry a token proving who you are."],
+   ["You delete activity 14 — what does the browser send?","<code>DELETE /activities/14</code> with the token in the Authorization header. No body: the path says what, the header says who."],
+   ["Why 403 rather than 401 for an unverified email?","401 means 'I don't know who you are'. 403 means 'I know you, but you can't do this yet'. The frontend uses that difference to show the OTP screen."]
   ]
 },
 {
-  n:2, title:"How Python becomes a web server", sub:"uvicorn · FastAPI · decorators · routers",
+  n:2, title:"How Python becomes a web server", sub:"main.py · uvicorn · decorators · routers",
   body:`
 <h3>uvicorn — the doorman</h3>
 <pre><code>uvicorn app.main:app --reload</code></pre>
-<p>Means: go into <code>app/main.py</code>, find the thing called <code>app</code>, serve it. uvicorn holds the network port open, turns incoming text into Python objects, and hands them on. <code>--reload</code> restarts on save — development only.</p>
-<h3>FastAPI — the sorter</h3>
-<p>At startup FastAPI reads every label in your code and builds a list:</p>
-<table><tr><th>Method</th><th>Address</th><th>Function</th></tr>
+<p>Go into <code>app/main.py</code>, find the object called <code>app</code>, serve it. uvicorn holds the network port open, turns raw HTTP text into Python objects, and hands them to FastAPI. It knows nothing about activities. <code>--reload</code> watches files and restarts on save — development only; your Dockerfile runs without it.</p>
+
+<div class="file">backend/app/main.py — startup half</div>
+<pre><code>from app.env_loader import load_env
+
+# Load .env BEFORE the imports below, because services read env
+# vars (SMTP, SECRET_KEY, DATABASE_URL) at import time.
+load_env()
+
+import logging, traceback
+from pathlib import Path
+from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
+
+from app.api.activities import router as activities_router
+from app.api.analytics  import router as analytics_router
+from app.api.auth       import router as auth_router
+from app.databases.database import engine
+from app.models.activity import Activity   # noqa: F401 - registers the table
+from app.models.base     import Base
+from app.models.otp      import EmailOTP   # noqa: F401 - registers the table
+from app.models.user     import User       # noqa: F401 - registers the table
+
+Base.metadata.create_all(bind=engine)
+
+from app.databases.schema_sync import sync_schema   # noqa: E402
+sync_schema(engine)
+
+from app.databases.database import SessionLocal
+from app.services.account_service import purge_expired_accounts
+_db = SessionLocal()
+try:
+    purge_expired_accounts(_db)
+finally:
+    _db.close()</code></pre>
+
+<h4>Why the order matters</h4>
+<ol>
+<li><b>load_env() first.</b> <code>database.py</code> reads <code>DATABASE_URL</code> at <i>import</i> time — the moment Python loads the file, not when a function runs. Load <code>.env</code> after and the engine has already connected to the wrong address. That's why the imports below it carry <code>noqa: E402</code>: you broke the "imports at top" rule deliberately.</li>
+<li><b>create_all()</b> walks the table register and creates anything missing.</li>
+<li><b>sync_schema()</b> adds missing <i>columns</i>, which create_all never does.</li>
+<li><b>purge_expired_accounts()</b> housekeeping. Note the manual <code>try/finally</code> — endpoints get a session injected, but this runs outside any request so it opens and closes one by hand.</li>
+</ol>
+<div class="note">Those three model imports look unused and are marked <code>noqa: F401</code>. Importing a file is what <b>runs</b> the class definitions, which is what registers the tables. Delete them and your tables silently stop being created.</div>
+
+<div class="file">backend/app/main.py — runtime half</div>
+<pre><code>app = FastAPI(title="EnduranceHub API", version="1.0.0")
+
+app.add_middleware(CORSMiddleware, allow_origins=["*"],
+                   allow_methods=["*"], allow_headers=["*"])
+
+app.include_router(auth_router)
+app.include_router(activities_router)
+app.include_router(analytics_router)
+
+
+@app.exception_handler(Exception)
+def unhandled_exception_handler(request: Request, exc: Exception):
+    logging.error("Unhandled error on %s %s\\n%s", request.method, request.url.path,
+                  "".join(traceback.format_exception(type(exc), exc, exc.__traceback__)))
+    return JSONResponse(status_code=500,
+        content={"detail": "Something went wrong on the server. Check the API logs."})
+
+
+FRONTEND_DIR = Path(__file__).resolve().parents[2] / "frontend"
+
+if FRONTEND_DIR.exists():
+    app.mount("/static", StaticFiles(directory=FRONTEND_DIR), name="static")
+
+    @app.get("/")
+    def serve_frontend():
+        return FileResponse(FRONTEND_DIR / "index.html")
+
+@app.get("/health")
+def health():
+    return {"status": "healthy"}</code></pre>
+
+<h4>The exception handler — your "Failed to fetch" fix</h4>
+<p>When an endpoint crashes, the exception escapes <i>past</i> the CORS middleware. The 500 arrives with no CORS headers, the browser refuses to read it, and JavaScript sees a network failure instead of an error message. This handler catches the crash <b>inside</b> the CORS layer, logs the full traceback server-side, and returns a deliberately generic message. Never leak stack traces to users — they reveal file paths and library versions.</p>
+
+<h4>Serving the frontend</h4>
+<p><code>parents[2]</code> walks up three levels from <code>backend/app/main.py</code> to the repo root, then into <code>frontend/</code>. Serving it from FastAPI gives the app a real <code>http://</code> origin, which the browser's password manager requires and OAuth demands — and makes frontend and API same-origin, so CORS stops mattering at all.</p>
+
+<h3>The request lifecycle</h3>
+<pre><code>browser
+ → uvicorn                (text → Python objects)
+   → exception handler    (catches anything below)
+     → CORS middleware    (adds headers)
+       → route matching   (which function?)
+         → dependencies   (get_current_user → get_db)
+           → your endpoint
+         ← return value
+       ← response_model filters it
+     ← JSON encoding
+ ← HTTP response</code></pre>
+
+<h3>How routing actually works</h3>
+<p>At startup FastAPI reads every decorator and builds a list:</p>
+<table><tr><th>Method</th><th>Path</th><th>Function</th></tr>
 <tr><td>POST</td><td>/activities</td><td>create_activity</td></tr>
 <tr><td>GET</td><td>/activities</td><td>list_activities</td></tr>
 <tr><td>DELETE</td><td>/activities/{id}</td><td>delete_activity</td></tr></table>
-<p>A message arrives, it finds the row where <b>both</b> method and address match, and runs that function. Method matters as much as path — same address, different verb, different job.</p>
+<p>A message arrives, it finds the row where <b>both</b> method and path match. Same path with a different verb is a different function.</p>
+
 <h3>The four places data comes from</h3>
-<p>You never call your own endpoint. FastAPI does — so it has to fill in the arguments. It works out each one from the type hint.</p>
-<table><tr><th>#</th><th>Where</th><th>Looks like</th></tr>
-<tr><td>1</td><td>the address</td><td><code>activity_id: int</code> with <code>{activity_id}</code> in the label</td></tr>
-<tr><td>2</td><td>after the <code>?</code></td><td><code>limit: int = 50</code></td></tr>
-<tr><td>3</td><td>the body</td><td><code>payload: ActivityCreate</code></td></tr>
-<tr><td>4</td><td>another function</td><td><code>db = Depends(get_db)</code></td></tr></table>
-<h3>Which endpoints use which</h3>
-<table><tr><th>Action</th><th>Addr</th><th>?</th><th>Body</th><th>Depends</th></tr>
-<tr><td>POST /activities</td><td>–</td><td>–</td><td>✓</td><td>✓</td></tr>
-<tr><td>GET /activities</td><td>–</td><td>✓</td><td>–</td><td>✓</td></tr>
-<tr><td>GET /activities/14</td><td>✓</td><td>–</td><td>–</td><td>✓</td></tr>
-<tr><td>PUT /activities/14</td><td>✓</td><td>–</td><td>✓</td><td>✓</td></tr>
-<tr><td>DELETE /activities/14</td><td>✓</td><td>–</td><td>–</td><td>✓</td></tr></table>
-<div class="note">The last column is ticked on every row: every endpoint needs a database session and needs to know who's asking.</div>
-<h3>response_model</h3>
-<p>A filter on the way out. You return a full database object; only the fields listed in the schema survive into the JSON. It's why a password hash physically cannot leak.</p>`,
+<p>You never call your endpoints — FastAPI does, so it must fill in the arguments. It decides from the type hints.</p>
+<pre><code>def get_activity(activity_id: int,                        # 1 PATH
+                 db: Session = Depends(get_db)):          # 4 DEPENDENCY
+
+def list_activities(limit: int = 50, offset: int = 0):    # 2 QUERY
+def create_activity(payload: ActivityCreate):             # 3 BODY</code></pre>
+<table><tr><th>#</th><th>Source</th><th>Rule FastAPI applies</th></tr>
+<tr><td>1</td><td>path</td><td>name appears in {braces} in the route</td></tr>
+<tr><td>2</td><td>query string</td><td>simple type with a default</td></tr>
+<tr><td>3</td><td>body</td><td>the type is a Pydantic model</td></tr>
+<tr><td>4</td><td>dependency</td><td>default is <code>Depends(...)</code></td></tr></table>
+
+<h3>Routers</h3>
+<pre><code>router = APIRouter(prefix="/activities", tags=["activities"])</code></pre>
+<p><code>prefix</code> prepends to every route in the file, so <code>@router.get("")</code> becomes <code>GET /activities</code>. <code>tags</code> groups them in the docs. <code>main.py</code> composes rather than builds — which is why it's ~100 lines for 22 endpoints.</p>
+<p>Open <b>/docs</b> — FastAPI generated that page from your type hints alone.</p>`,
   qs:[
-   ["What does <code>--reload</code> do, and should it run in production?","Watches your files and restarts the server on save. Development only — your Dockerfile runs uvicorn without it."],
-   ["Why must FastAPI match both method and path?","Same address can mean different things. POST /activities creates one; GET /activities lists them. The verb is half the answer."],
-   ["Why is it <code>Depends(get_db)</code> and not <code>Depends(get_db())</code>?","No brackets means you're pointing at the function so FastAPI can call it at the right moment. With brackets Python would call it immediately, once, at startup."],
+   ["Why does main.py import models it never uses?","Importing runs the class definitions, which registers the tables on Base. Delete the imports and create_all() has nothing to create."],
+   ["Why is load_env() called before the other imports?","database.py reads DATABASE_URL at import time. Load .env after and the engine has already connected to the wrong address."],
+   ["What problem does the exception handler solve?","Unhandled errors escaped past CORS middleware, so the 500 had no CORS headers and the browser reported 'Failed to fetch' instead of the real error."],
+   ["Why is it Depends(get_db) and not Depends(get_db())?","No brackets means you point at the function so FastAPI can call it at the right moment. With brackets Python calls it once, at import time."],
    ["Second page of 20 activities — what URL?","<code>GET /activities?limit=20&offset=20</code>"]
   ]
 },
 {
-  n:3, title:"Talking to the database", sub:"engine · session · get_db",
+  n:3, title:"Talking to the database", sub:"database.py — engine · session · get_db",
   body:`
-<p>PostgreSQL is a separate program. You must connect first, and connecting is slow (~30ms). Three things solve this.</p>
-<h3>The address</h3>
-<pre><code>DATABASE_URL = os.getenv(
+<p>PostgreSQL is a separate program. You must connect first, and connecting costs ~30ms. Doing that per request would crawl.</p>
+
+<div class="file">backend/app/databases/database.py</div>
+<pre><code>import os
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+
+DATABASE_URL = os.getenv(
     "DATABASE_URL",
-    "postgresql://postgres:pass@localhost:5432/endurancehub",
-)</code></pre>
-<p>Look for a setting called <code>DATABASE_URL</code>; if missing, use the local one. That's why the same code runs on your laptop and on Render — Render sets that variable, so your code connects there instead. You never edit the file.</p>
-<div class="note"><b>localhost means "the computer I'm running on."</b> Inside Render's container that's the container itself — which has no database. That's why forgetting <code>DATABASE_URL</code> crashes the deploy.</div>
-<h3>1. The engine</h3>
-<pre><code>engine = create_engine(DATABASE_URL)</code></pre>
-<p>Your phone line to PostgreSQL. Created <b>once</b>. Keeps a few connections open and lends them out, so nobody waits to dial.</p>
-<h3>2. The session factory</h3>
-<pre><code>SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)</code></pre>
-<p>A session is a workspace for one request — a shopping cart. <code>SessionLocal</code> isn't a cart; it's what <i>makes</i> carts. <code>autocommit=False</code> means never check out on its own.</p>
-<h3>3. get_db</h3>
-<pre><code>def get_db():
+    "postgresql://postgres:PASSWORD@localhost:5432/endurancehub",
+)
+
+# Several hosts (Render, Heroku) hand out "postgres://", a scheme
+# SQLAlchemy 2 no longer recognises.
+if DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+
+# SQLite (used in tests) is single-threaded by default; Postgres ignores this.
+connect_args = {"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {}
+
+engine = create_engine(DATABASE_URL, connect_args=connect_args)
+
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+
+def get_db():
     db = SessionLocal()
     try:
         yield db
     finally:
         db.close()</code></pre>
-<p>The librarian: fetches the book, hands it over, <b>waits at the desk</b>, puts it away when you return.</p>
-<table><tr><th></th><th>What happens</th></tr>
-<tr><td><code>yield</code></td><td>hand it out and pause; resume after the request</td></tr>
-<tr><td><code>return</code></td><td>function ends immediately, session closes before you can use it</td></tr></table>
-<p><code>finally</code> runs even if the endpoint crashes. Without it, every crash leaks a connection until PostgreSQL refuses new ones and the app freezes.</p>
+
+<h3>The address</h3>
+<p><code>os.getenv(A, B)</code> means: look for setting A; if missing use B. That single line is why identical code runs on your laptop and on Render — Render sets <code>DATABASE_URL</code> to its own database, so your code connects there with no edits.</p>
+<div class="note"><b>localhost means "the computer I'm running on."</b> Inside Render's container that's the container itself, which has no PostgreSQL. Forget to set DATABASE_URL there and the deploy crashes with connection refused.</div>
+
+<h3>The engine</h3>
+<p>Your phone line to PostgreSQL, created <b>once</b>. It keeps a pool of connections open and lends them out, so no request waits to dial. <b>One engine per application.</b></p>
+
+<h3>The session factory</h3>
+<p>A session is a workspace for one request — a shopping cart. <code>SessionLocal</code> isn't a cart, it's what <i>makes</i> carts. <code>autocommit=False</code> means never check out on its own.</p>
+
+<h3>get_db — the librarian</h3>
+<p>Fetches the book, hands it over, <b>waits at the desk</b>, puts it away when you return.</p>
+<table><tr><th>Keyword</th><th>What happens</th></tr>
+<tr><td><code>yield</code></td><td>hand it out and pause; resume when the request ends</td></tr>
+<tr><td><code>return</code></td><td>function ends now, so <code>finally</code> closes the session before you can use it</td></tr></table>
+<p><code>finally</code> runs even when the endpoint crashes. Without it every crash leaks a connection, until PostgreSQL refuses new ones and the app freezes.</p>
+
 <h3>Why one cart per request</h3>
-<p>With a shared cart, your checkout would save someone else's half-finished data, and your crash would undo their work.</p>
-<div class="note"><b>commit</b> writes to PostgreSQL. <b>close</b> just returns the connection. They're different steps — crash before commit and nothing is saved. That all-or-nothing behaviour is called a <b>transaction</b>.</div>`,
+<p>Shared cart: you add your activity, someone else adds theirs, you check out — and save their half-finished data too. Your rollback would undo their work as well.</p>
+<div class="note"><b>commit</b> writes to PostgreSQL. <b>close</b> only returns the connection. Crash before commit and nothing is saved — everything between opening and commit lands together or not at all. That's a <b>transaction</b>.</div>`,
   qs:[
-   ["What breaks if <code>yield</code> becomes <code>return</code>?","The function ends at that line, so <code>finally: db.close()</code> runs immediately. Your endpoint receives an already-closed session and crashes."],
-   ["Engine vs session — how many of each?","One engine per application (a shared pool of connections). One session per request (a private workspace, thrown away afterwards)."],
-   ["Does <code>db.close()</code> save your changes?","No. <code>db.commit()</code> saves. <code>close()</code> only returns the connection. Crash before commit and nothing is written."]
+   ["What breaks if yield becomes return?","The function ends immediately, so finally closes the session. Your endpoint receives a closed session and crashes."],
+   ["How many engines and how many sessions?","One engine per application (shared connection pool). One session per request (private workspace, discarded afterwards)."],
+   ["Does db.close() save your changes?","No. db.commit() saves; close only returns the connection. Crash before commit and nothing is written."],
+   ["Why normalise postgres:// to postgresql://?","Render and Heroku hand out the old scheme, which SQLAlchemy 2 rejects. Without the fix the deploy crashes on startup with an obscure dialect error."]
   ]
 },
 {
-  n:4, title:"Models", sub:"classes that describe tables",
+  n:4, title:"Models", sub:"base.py · user.py · activity.py · otp.py",
   body:`
-<p>PostgreSQL stores tables. Python thinks in objects. A <b>model</b> is a Python class describing one table.</p>
-<h3>The register</h3>
-<pre><code>Base = declarative_base()</code></pre>
-<p>A list of tables, empty at first. Any class inheriting from <code>Base</code> is added automatically. Then in <code>main.py</code>:</p>
-<pre><code>Base.metadata.create_all(bind=engine)</code></pre>
-<p>Walk the list, create anything missing. That's why you never wrote <code>CREATE TABLE</code> — and why <code>main.py</code> imports the models even though it "doesn't use" them. Importing runs the class definition, which is what adds it to the list.</p>
-<h3>The User model</h3>
-<pre><code>class User(Base):
+<p>PostgreSQL stores tables. Python thinks in objects. A model is a Python class describing one table.</p>
+
+<div class="file">backend/app/models/base.py</div>
+<pre><code>from sqlalchemy.orm import declarative_base
+
+Base = declarative_base()</code></pre>
+<p>Two lines, easy to skip. <code>Base</code> is a <b>register of tables</b>, empty at first. Any class inheriting from it is added automatically — that's all "inherit" means here. Then <code>Base.metadata.create_all(engine)</code> walks the register and creates what's missing.</p>
+
+<div class="file">backend/app/models/user.py</div>
+<pre><code>from sqlalchemy import Boolean, Column, DateTime, Integer, String
+from app.models.base import Base
+
+
+class User(Base):
     __tablename__ = "users"
-    id = Column(Integer, primary_key=True, index=True)
-    name = Column(String, nullable=False)
-    email = Column(String, unique=True, nullable=False)
+
+    id            = Column(Integer, primary_key=True, index=True)
+    name          = Column(String, nullable=False)
+    email         = Column(String, unique=True, nullable=False)
     password_hash = Column(String, nullable=False)
-    is_verified = Column(Boolean, nullable=False, default=False)</code></pre>
-<table><tr><th>Rule</th><th>Means</th></tr>
-<tr><td>primary_key=True</td><td>identifies the row; PostgreSQL assigns 1,2,3…</td></tr>
+
+    # False until proven via OTP; login is blocked while False.
+    is_verified   = Column(Boolean, nullable=False, default=False)
+
+    # Soft-delete timestamp; purged after the 5-day grace period.
+    delete_requested_at = Column(DateTime, nullable=True)
+
+    # Optional physiology for heart-rate based effort estimates.
+    birth_year = Column(Integer, nullable=True)
+    resting_hr = Column(Integer, nullable=True)
+    max_hr     = Column(Integer, nullable=True)</code></pre>
+
+<table><tr><th>Keyword</th><th>Meaning</th></tr>
+<tr><td>primary_key=True</td><td>identifies the row; PostgreSQL assigns 1, 2, 3…</td></tr>
 <tr><td>nullable=False</td><td>can never be empty</td></tr>
-<tr><td>unique=True</td><td>no two rows share this value</td></tr>
-<tr><td>index=True</td><td>fast lookups, like a book's index</td></tr>
-<tr><td>default=False</td><td>used when nobody says otherwise</td></tr></table>
-<div class="note">These are enforced by <b>PostgreSQL itself</b>, not just your Python. Even a buggy app can't create two accounts with the same email.</div>
-<h3>Foreign key</h3>
-<pre><code>user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)</code></pre>
-<p>This number must be a real <code>id</code> from the users table. It's how the database knows an activity belongs to a person.</p>
+<tr><td>unique=True</td><td>no two rows may share this value</td></tr>
+<tr><td>index=True</td><td>fast lookup, like a book's index</td></tr>
+<tr><td>default=False</td><td>used when nobody supplies a value</td></tr></table>
+<div class="note">These are enforced by <b>PostgreSQL itself</b>. Even a buggy app — or two requests arriving in the same millisecond — cannot create two accounts with the same email. Your 409 check exists to give a friendly error, not to be the real guard.</div>
+
+<div class="file">backend/app/models/activity.py</div>
+<pre><code>class Activity(Base):
+    __tablename__ = "activities"
+
+    id      = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+
+    activity_type = Column(String, nullable=False)
+
+    # Nullable: strength work, sports and classes have no distance.
+    distance_km  = Column(Float, nullable=True)
+    duration_min = Column(Float, nullable=False)
+    rpe          = Column(Integer, nullable=False)
+    avg_hr       = Column(Integer, nullable=True)
+    date         = Column(Date, nullable=False, default=date_type.today, index=True)
+    notes        = Column(String, nullable=True)</code></pre>
+<p><b>ForeignKey("users.id")</b> means this number must be a real id from the users table. It's how the database knows an activity belongs to a person, and it refuses an activity pointing at a user who doesn't exist.</p>
+<p>Both <code>user_id</code> and <code>date</code> are indexed because every query filters or sorts on them.</p>
+
+<div class="file">backend/app/models/otp.py</div>
+<pre><code>class EmailOTP(Base):
+    __tablename__ = "email_otps"
+
+    id         = Column(Integer, primary_key=True, index=True)
+    email      = Column(String, nullable=False, index=True)
+    code       = Column(String, nullable=False)
+    expires_at = Column(DateTime, nullable=False)
+    attempts   = Column(Integer, nullable=False, default=0)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)</code></pre>
+<p><code>attempts</code> powers the 5-guess lockout. <code>created_at</code> powers the 60-second resend cooldown. Note the code is stored as plain digits — production would hash it like a password, in case the database leaks.</p>
+
 <h3>Class vs row</h3>
-<pre><code>User                                 # the class = the table
-User(name="Aryan", email="a@b.com")  # an instance = one row</code></pre>
+<pre><code>User                                  # the class  = the table
+User(name="Aryan", email="a@b.com")   # an instance = one row</code></pre>
+
 <h3>Why db.refresh()</h3>
-<p><code>commit()</code> sends Python → PostgreSQL. <code>refresh()</code> brings PostgreSQL → Python. You never set the <code>id</code>; PostgreSQL did. Refresh goes and asks what it assigned, so the response isn't missing it.</p>`,
+<pre><code>db.add(new_user)      # into the cart
+db.commit()           # written to PostgreSQL, permanent
+db.refresh(new_user)  # ask what PostgreSQL assigned</code></pre>
+<p><code>commit</code> sends Python → PostgreSQL. <code>refresh</code> brings PostgreSQL → Python. You never set the <code>id</code>; PostgreSQL did, from a counter. Without the refresh, <code>new_user.id</code> is still None and the response is missing it.</p>`,
   qs:[
-   ["Why does <code>main.py</code> import models it never uses?","Importing runs the class definition, which registers the table on <code>Base</code>. Delete the import and the table silently stops being created."],
-   ["Which direction does <code>db.refresh()</code> move data?","From PostgreSQL into your Python object. <code>commit()</code> goes the other way."],
-   ["Why is <code>unique=True</code> on email better than just checking in Python?","The database enforces it. Even if your code has a bug, or two requests arrive at the same instant, a duplicate is impossible."]
+   ["Which direction does db.refresh() move data?","From PostgreSQL into your Python object. commit() goes the other way."],
+   ["Why is unique=True better than checking in Python?","The database enforces it. Even with a bug, or two simultaneous requests, a duplicate is impossible."],
+   ["Why is distance_km nullable but duration_min not?","Every activity has a duration, but only distance sports have a distance. A gym session genuinely has none."],
+   ["What does ForeignKey do for you?","Guarantees every activity points at a real user. The database refuses a row pointing at a user that doesn't exist."]
   ]
 },
 {
-  n:5, title:"Schemas", sub:"Pydantic forms that check incoming data",
+  n:5, title:"Schemas", sub:"user_schemas.py · activity_schemas.py · constants.py",
   body:`
 <p>Your API is public. Anyone can send anything. Schemas check every message <b>before</b> your code sees it.</p>
+
 <h3>Model vs schema</h3>
 <table><tr><th></th><th>Model</th><th>Schema</th></tr>
 <tr><td>Inherits</td><td>Base</td><td>BaseModel</td></tr>
 <tr><td>Describes</td><td>a table</td><td>a message</td></tr>
-<tr><td>Lives</td><td>forever, on disk</td><td>milliseconds, in memory</td></tr>
-<tr><td>Job</td><td>storing</td><td>checking</td></tr></table>
-<pre><code>class User(Base):              # MODEL
-    password_hash = Column(String)
-
-class UserCreate(BaseModel):   # SCHEMA
-    password: str</code></pre>
+<tr><td>Lives</td><td>forever, on disk</td><td>milliseconds, in memory</td></tr></table>
+<pre><code>class User(Base):            password_hash = Column(String)   # MODEL
+class UserCreate(BaseModel): password: str                    # SCHEMA</code></pre>
 <div class="note">That difference <b>is</b> the security boundary. The plain password exists only inside the schema, on its way to being hashed. It never reaches the model, so it never reaches the database.</div>
-<h3>Field rules</h3>
-<pre><code>name: str = Field(min_length=1, max_length=100)
-rpe: int = Field(ge=1, le=10)          # ge = ≥, le = ≤
-distance_km: Optional[float] = Field(default=None, gt=0, le=1000)
-code: str = Field(pattern=r"^\\d{6}$")  # exactly six digits</code></pre>
-<h3>Password rules live on Create, not Login</h3>
-<pre><code>@field_validator("password")
-def password_is_strong(cls, value):
-    missing = [label for pattern, label in PASSWORD_RULES
-               if not re.search(pattern, value)]
-    if missing:
-        raise ValueError("Password must contain " + ", ".join(missing))
-    return value</code></pre>
-<p><code>UserLogin</code> has <b>no</b> rules on purpose. Rules go where a password is <i>chosen</i>, not where it's <i>checked</i> — otherwise anyone with an older password could never log in.</p>
-<h3>The cross-field validator</h3>
-<pre><code>@model_validator(mode="after")
-def check_type_and_distance(self):
-    if self.activity_type not in ACTIVITY_TYPES:
-        raise ValueError(f"Unknown activity type")
-    if self.activity_type in DISTANCE_TYPES:
-        if self.distance_km is None:
-            raise ValueError("requires a distance in km")
-    else:
-        self.distance_km = None      # silently strip it
-    return self</code></pre>
-<p>Field rules check one field alone. This checks two <i>against each other</i>: a run needs a distance, a gym session must not have one. <code>mode="after"</code> means it runs once the individual checks have passed.</p>
-<h3>Three schemas per thing</h3>
+
+<div class="file">backend/app/schemas/user_schemas.py</div>
+<pre><code>import re
+from datetime import datetime
+from typing import Optional
+from pydantic import BaseModel, Field, field_validator
+
+PASSWORD_RULES = [
+    (r"[a-z]",         "a lowercase letter"),
+    (r"[A-Z]",         "an uppercase letter"),
+    (r"\\d",            "a number"),
+    (r"[^A-Za-z0-9]",  "a special character"),
+]
+PASSWORD_MIN_LENGTH = 8
+
+
+class UserCreate(BaseModel):
+    name:     str = Field(min_length=1, max_length=100)
+    email:    str = Field(min_length=3, max_length=255)
+    password: str = Field(min_length=PASSWORD_MIN_LENGTH, max_length=128)
+
+    @field_validator("password")
+    @classmethod
+    def password_is_strong(cls, value: str) -> str:
+        missing = [label for pattern, label in PASSWORD_RULES
+                   if not re.search(pattern, value)]
+        if missing:
+            raise ValueError("Password must contain " + ", ".join(missing))
+        return value
+
+
+class UserLogin(BaseModel):
+    email: str
+    password: str          # deliberately NO rules
+
+
+class UserOut(BaseModel):
+    id: int
+    name: str
+    email: str
+    delete_requested_at: Optional[datetime] = None
+    birth_year: Optional[int] = None
+    resting_hr: Optional[int] = None
+    max_hr: Optional[int] = None
+
+    model_config = {"from_attributes": True}
+
+
+class OTPVerify(BaseModel):
+    email: str
+    code: str = Field(min_length=6, max_length=6, pattern=r"^\\d{6}$")</code></pre>
+
+<h4>The password validator</h4>
+<p>Each rule is a pattern plus the wording for the error, so the API can say exactly what's missing rather than "invalid password". <code>@field_validator("password")</code> runs after the basic type and length checks pass. Raising <code>ValueError</code> becomes a 422.</p>
+
+<h4>Why UserLogin has no rules</h4>
+<p>Two reasons. Existing users whose password predates the rule could never log in. And a 422 saying "must contain an uppercase letter" tells an attacker their guess couldn't possibly be right — filtering their list for free. Validate where a value is <b>chosen</b>, not where it's <b>checked</b>.</p>
+
+<h4>UserOut</h4>
+<p>Note what's missing: <b>no password_hash</b>. Your endpoint returns the whole User object; only these seven fields survive. <code>from_attributes: True</code> is the permission slip letting Pydantic read a normal Python object rather than a dict — without it, returning a SQLAlchemy object fails.</p>
+
+<h4>The regex</h4>
+<p><code>^\\d{6}$</code> = start, exactly six digits, end. So "123456" passes; "12ab56", "12345", "1234567" all fail before your code runs.</p>
+
+<div class="file">backend/app/schemas/activity_schemas.py</div>
+<pre><code>class ActivityCreate(BaseModel):
+    activity_type: str = Field(min_length=1, max_length=50)
+    distance_km: Optional[float] = Field(default=None, gt=0, le=1000)
+    duration_min: float = Field(gt=0, le=10080)
+    rpe: int = Field(ge=1, le=10)
+    avg_hr: Optional[int] = Field(default=None, ge=30, le=230)
+    date: Optional[date_type] = None
+    notes: Optional[str] = Field(default=None, max_length=500)
+
+    @model_validator(mode="after")
+    def check_type_and_distance(self):
+        if self.activity_type not in ACTIVITY_TYPES:
+            raise ValueError(f"Unknown activity type '{self.activity_type}'")
+        if self.activity_type in DISTANCE_TYPES:
+            if self.distance_km is None:
+                raise ValueError(f"'{self.activity_type}' requires a distance in km")
+        else:
+            self.distance_km = None      # strip, don't reject
+        return self</code></pre>
+<table><tr><th>Rule</th><th>Meaning</th></tr>
+<tr><td>gt=0</td><td>greater than zero — a 0 km run makes no sense</td></tr>
+<tr><td>ge=1, le=10</td><td>the RPE scale</td></tr>
+<tr><td>le=10080</td><td>7 days in minutes — a sanity ceiling</td></tr></table>
+
+<h4>Field validator vs model validator</h4>
+<p>A field validator checks one field alone. A <b>model</b> validator checks fields <i>against each other</i> — "a run needs a distance, a gym session must not have one." No single-field rule can express that. <code>mode="after"</code> means it runs once the individual checks have passed, so the types are already correct.</p>
+<p>The last branch <b>silently strips</b> rather than rejecting. Don't trust the client, but don't punish them — clean the data quietly.</p>
+
+<h4>Three schemas per thing</h4>
 <table><tr><th>Schema</th><th>Direction</th><th>Rules</th></tr>
 <tr><td>ActivityCreate</td><td>in</td><td>everything required</td></tr>
-<tr><td>ActivityUpdate</td><td>in</td><td>everything optional</td></tr>
-<tr><td>ActivityOut</td><td>out</td><td>what the client may see</td></tr></table>
-<h3>constants.py</h3>
-<pre><code>ACTIVITY_TYPES = {"run":"distance", "strength":"strength", ...}
-DISTANCE_TYPES = {t for t,cat in ACTIVITY_TYPES.items() if cat=="distance"}</code></pre>
-<p>One dictionary of sport → category. The distance set is <b>derived</b> from it, so the two can never disagree. Sets make <code>in</code> checks instant.</p>`,
-  qs:[
-   ["Why does UserLogin have no password rules?","Rules belong where a password is chosen. Enforcing them at login would lock out anyone whose password predates the rule, and leaks what passwords must look like."],
-   ["Why does <code>UserOut</code> exist when <code>User</code> already describes a user?","One is what you store, the other is what you send. UserOut has no password_hash, so a hash can't leak into a response even by accident."],
-   ["Why derive DISTANCE_TYPES instead of typing the list twice?","Two hand-written lists can drift apart. Add a sport to one and forget the other, and you get a sport that never asks for a distance."],
-   ["Field validator vs model validator?","A field validator checks one field on its own. A model validator checks fields against each other — like 'runs need a distance, gym sessions must not have one'."]
-  ]
-},
-{
-  n:6, title:"Passwords, registration and OTP", sub:"bcrypt · secrets · the verify flow",
-  body:`
-<h3>Hashing</h3>
-<pre><code>pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-def hash_password(p): return pwd_context.hash(p)
-def verify_password(plain, hashed): return pwd_context.verify(plain, hashed)</code></pre>
-<p>Hashing is a <b>one-way blender</b>. <code>"secret"</code> becomes <code>$2b$12$Xk9...</code> and cannot be reversed. Steal the database and you get smoothies, not fruit.</p>
-<ul>
-<li><b>Salted</b> — a random value mixed in, so the same password hashes differently every time. Defeats precomputed tables.</li>
-<li><b>Slow on purpose</b> — bcrypt is deliberately expensive, making billions of guesses impractical.</li>
-</ul>
-<p>Login doesn't un-hash. It re-hashes your attempt using the salt stored inside the hash, and compares.</p>
-<h3>Register flow</h3>
-<pre><code>if db.query(User).filter(User.email == user.email).first():
-    raise HTTPException(409, "Email already registered")
+<tr><td>ActivityUpdate</td><td>in</td><td>everything optional (partial edit)</td></tr>
+<tr><td>ActivityOut</td><td>out</td><td>what the client may see (no user_id)</td></tr></table>
 
-new_user = User(name=..., email=...,
-                password_hash=hash_password(user.password),
-                is_verified=False)
-db.add(new_user); db.commit(); db.refresh(new_user)
-send_otp_email(new_user.email, issue_otp(db, new_user.email))
-return new_user</code></pre>
-<p>Duplicate check first, so the client gets a clean 409 instead of a raw database crash. Account starts <b>unverified</b>.</p>
-<h3>The OTP</h3>
-<pre><code>code = f"{secrets.randbelow(1_000_000):06d}"</code></pre>
-<p><code>secrets</code>, not <code>random</code> — <code>random</code> is predictable and must never be used for anything security-related.</p>
-<table><tr><th>Protection</th><th>How</th></tr>
-<tr><td>Expiry</td><td>10 minutes</td></tr>
-<tr><td>Brute force</td><td>locked after 5 wrong attempts</td></tr>
-<tr><td>Reuse</td><td>deleted on success</td></tr>
-<tr><td>Spam</td><td>60-second resend cooldown</td></tr>
-<tr><td>Old codes</td><td>reissuing deletes the previous one</td></tr></table>
-<div class="note">6 digits = a million options. Without the attempt limit, a script could try them all in minutes. The lockout is what makes a short code safe.</div>
-<h3>Delivery never crashes</h3>
-<p>The account row is committed <b>before</b> the email is sent. So if mail fails, the send function logs the code instead of raising — otherwise a mail outage would turn a successful registration into a 500.</p>
-<p>Transport is auto-picked: Resend → Brevo → SMTP → log. <b>SMTP fails on Render</b> because cloud hosts block outbound SMTP ports; HTTPS on 443 is never blocked.</p>`,
-  qs:[
-   ["Why are two hashes of the same password different?","Each hash includes a random salt. Without it, identical passwords would produce identical hashes and cracking one would crack them all."],
-   ["Why <code>secrets</code> instead of <code>random</code>?","<code>random</code> is predictable — see enough outputs and you can compute the rest. Fine for shuffling a UI, catastrophic for a verification code."],
-   ["Why is a 6-digit code safe?","On its own it isn't — a million guesses is nothing. The 5-attempt lockout, 10-minute expiry and single use are what make it safe."],
-   ["Why does email delivery never raise?","The user row is already committed. If sending raised, a mail outage would return 500 for an account that was actually created — and the user could never retry with that email."]
-  ]
-},
-{
-  n:7, title:"JWT and protecting routes", sub:"tokens · get_current_user · account deletion",
-  body:`
-<h3>Why a token at all</h3>
-<p>The server is stateless — it remembers nothing between requests. So each request must prove who you are. Sending the password every time would be wrong: possession of it grants access, it never expires, and it would cross the network hundreds of times a day.</p>
-<div class="note">Sending the password <b>hash</b> would be just as bad: the hash would become the credential, so a database leak would hand out working keys.</div>
-<h3>Making a token</h3>
-<pre><code>def create_access_token(data: dict):
-    to_encode = data.copy()
-    to_encode.update({"exp": datetime.utcnow() + timedelta(hours=12)})
-    return jwt.encode(to_encode, SECRET_KEY, algorithm="HS256")</code></pre>
-<p>Payload is <code>{"sub": email, "exp": expiry}</code>. <code>sub</code> is "subject" — whose token this is.</p>
-<p>A JWT has three parts: <code>header.payload.signature</code>.</p>
+<div class="file">backend/app/constants.py</div>
+<pre><code>ACTIVITY_TYPES = {
+    "run": "distance", "ride": "distance", "swim": "distance",
+    "row": "distance", "hike": "distance", "walk": "distance",
+    "strength": "strength", "crossfit": "strength",
+    "calisthenics": "strength", "hiit": "strength",
+    "football": "sport", "basketball": "sport", "cricket": "sport", ...
+    "yoga": "other", "pilates": "other", "other": "other",
+}
+
+DISTANCE_TYPES = {t for t, cat in ACTIVITY_TYPES.items() if cat == "distance"}
+
+THRESHOLD_MIN_KM = {"run":3.0, "ride":8.0, "swim":0.4, "row":1.0,
+                    "hike":2.0, "walk":2.0}
+THRESHOLD_MIN_MINUTES = 15
+THRESHOLD_LOOKBACK_DAYS = 90
+THRESHOLD_SHORT_MIN_MINUTES = 8
+THRESHOLD_TARGET_MINUTES = 60
+RIEGEL_EXPONENT = 0.06
+RIEGEL_MAX_FACTOR = 1.15
+DEFAULT_THRESHOLD_PACE = {"run":5.5, "ride":2.0, "swim":20.0, ...}</code></pre>
+<h4>Reading the set comprehension</h4>
+<pre><code>{t for t, cat in ACTIVITY_TYPES.items() if cat == "distance"}</code></pre>
 <ul>
-<li>The payload is <b>readable by anyone</b> — it's encoded, not encrypted. Never put secrets in it.</li>
-<li>The signature makes it <b>unforgeable</b>. Change one character and the signature no longer matches, and you can't compute a new one without SECRET_KEY.</li>
+<li><code>.items()</code> gives pairs: ("run","distance"), ("strength","strength")…</li>
+<li><code>for t, cat in</code> takes each pair apart</li>
+<li><code>if cat == "distance"</code> keeps only those</li>
+<li><code>{ t }</code> collects the names into a <b>set</b> — membership checks are instant</li>
 </ul>
-<h3>Reading a token</h3>
-<pre><code>def get_current_user(token = Depends(oauth2_scheme), db = Depends(get_db)):
-    credentials_exception = HTTPException(401, "Could not validate credentials")
+<p>Deriving it means the two lists can never disagree. Type it twice and one day you add a sport to one and forget the other.</p>
+<div class="note">The honest weakness: the frontend keeps its own copy, because a browser can't import a Python file. A bigger app would generate the JS from the Python or serve the list from an endpoint.</div>`,
+  qs:[
+   ["Why does UserLogin have no password rules?","Existing users with older passwords would be locked out, and a 422 naming the missing rule tells an attacker their guess was impossible — filtering their list for them."],
+   ["What does from_attributes: True do?","Lets Pydantic build the schema by reading attributes off a normal Python object, not just a dict. Without it, returning a SQLAlchemy object fails."],
+   ["Field validator vs model validator?","Field checks one field alone. Model checks fields against each other — 'runs need a distance, gym sessions must not'."],
+   ["Why strip a distance for football rather than reject it?","Don't trust the client, but don't punish them. Silently cleaning is friendlier and equally safe."],
+   ["Why derive DISTANCE_TYPES rather than write it out?","Two hand-written lists drift apart. Deriving guarantees they agree."]
+  ]
+},
+{
+  n:6, title:"Passwords, registration and OTP", sub:"security.py · otp_service.py · email_service.py",
+  body:`
+<div class="file">backend/app/services/security.py — the whole file</div>
+<pre><code>from passlib.context import CryptContext
+
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+def hash_password(password: str):
+    return pwd_context.hash(password)
+
+def verify_password(plain_password: str, hashed_password: str):
+    return pwd_context.verify(plain_password, hashed_password)</code></pre>
+<p>Nine lines, and they're the most security-critical in the app.</p>
+<p><b>Hashing is a one-way blender.</b> <code>"Secret123!"</code> becomes <code>$2b$12$Xk9...</code> and cannot be reversed. Steal the database and you get smoothies, not fruit.</p>
+<ul>
+<li><b>Salted</b> — a random value is mixed in, so the same password hashes differently every time. That defeats precomputed rainbow tables: cracking one hash tells you nothing about another.</li>
+<li><b>Deliberately slow</b> — bcrypt is expensive on purpose, so billions of guesses per second become thousands. The <code>$12$</code> in the hash is the cost factor.</li>
+</ul>
+<p><code>verify_password</code> doesn't decrypt. It re-hashes your attempt <b>using the salt stored inside the existing hash</b> and compares the results.</p>
+<div class="note">Your requirements pin <code>bcrypt==4.0.1</code>. passlib 1.7.4 reads <code>bcrypt.__about__</code>, which bcrypt removed in 4.1 — anything newer breaks password hashing at runtime. A real dependency trap.</div>
+
+<div class="file">backend/app/api/auth.py — register</div>
+<pre><code>@router.post("/register", response_model=UserOut, status_code=201)
+def register(user: UserCreate, db: Session = Depends(get_db)):
+    if db.query(User).filter(User.email == user.email).first():
+        raise HTTPException(status_code=409, detail="Email already registered")
+
+    new_user = User(
+        name=user.name,
+        email=user.email,
+        password_hash=hash_password(user.password),
+        is_verified=False,
+    )
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+
+    send_otp_email(new_user.email, issue_otp(db, new_user.email))
+    return new_user</code></pre>
+<p>Duplicate check first, so the client gets a clean 409 rather than a raw database constraint crash. The password is hashed in the same expression that builds the user — the plaintext is never assigned to a variable that lives longer than that line. The account starts <b>unverified</b>.</p>
+
+<div class="file">backend/app/services/otp_service.py — the whole file</div>
+<pre><code>import secrets
+from datetime import datetime, timedelta
+from app.models.otp import EmailOTP
+
+OTP_LIFETIME_MINUTES = 10
+MAX_ATTEMPTS = 5
+RESEND_COOLDOWN_SECONDS = 60
+
+
+def issue_otp(db, email: str) -> str:
+    # One active code per email: a resend invalidates any previous
+    # (possibly intercepted) code.
+    db.query(EmailOTP).filter(EmailOTP.email == email).delete()
+
+    code = f"{secrets.randbelow(1_000_000):06d}"
+    db.add(EmailOTP(
+        email=email,
+        code=code,
+        expires_at=datetime.utcnow() + timedelta(minutes=OTP_LIFETIME_MINUTES),
+    ))
+    db.commit()
+    return code
+
+
+def seconds_until_resend_allowed(db, email: str) -> int:
+    otp = db.query(EmailOTP).filter(EmailOTP.email == email).first()
+    if otp is None:
+        return 0
+    elapsed = (datetime.utcnow() - otp.created_at).total_seconds()
+    return max(0, int(RESEND_COOLDOWN_SECONDS - elapsed))
+
+
+def check_otp(db, email: str, code: str) -> str:
+    """Returns 'ok', 'expired', 'locked', or 'wrong'."""
+    otp = db.query(EmailOTP).filter(EmailOTP.email == email).first()
+    if otp is None or datetime.utcnow() > otp.expires_at:
+        return "expired"
+    if otp.attempts >= MAX_ATTEMPTS:
+        return "locked"
+
+    if otp.code != code:
+        otp.attempts += 1        # count BEFORE returning
+        db.commit()
+        return "wrong"
+
+    db.query(EmailOTP).filter(EmailOTP.email == email).delete()
+    db.commit()
+    return "ok"</code></pre>
+
+<h4>Line by line</h4>
+<p><code>f"{secrets.randbelow(1_000_000):06d}"</code> — a number 0–999999, formatted to six digits with leading zeros. <code>secrets</code>, not <code>random</code>: <code>random</code> is predictable from previous outputs and must never be used for anything security-related.</p>
+<p><b>The delete-first line</b> means only one code is ever valid. Request a new one and the old is dead — so a code someone glimpsed is worthless.</p>
+<p><b>attempts += 1 before returning</b> is deliberate. Increment after and a clever client could abandon the request mid-flight to avoid the count.</p>
+<p><b>Returning a string, not a boolean.</b> "expired", "locked", "wrong" each need a different message. A bool would collapse them.</p>
+<table><tr><th>Attack</th><th>Defence</th></tr>
+<tr><td>guessing all million codes</td><td>5-attempt lockout</td></tr>
+<tr><td>using an old intercepted code</td><td>10-minute expiry + delete on reissue</td></tr>
+<tr><td>replaying a used code</td><td>deleted on success</td></tr>
+<tr><td>spamming someone's inbox</td><td>60-second cooldown → 429</td></tr></table>
+<div class="note">Six digits is a million options — nothing on its own. The lockout, expiry and single use are what make a short, human-typeable code safe.</div>
+
+<div class="file">backend/app/services/email_service.py — the selection logic</div>
+<pre><code>def send_otp_email(to_email: str, code: str):
+    if os.getenv("RESEND_API_KEY"):
+        transport, send = "Resend", _send_resend
+    elif os.getenv("BREVO_API_KEY"):
+        transport, send = "Brevo", _send_brevo
+    elif os.getenv("SMTP_HOST") and os.getenv("SMTP_USER") and os.getenv("SMTP_PASS"):
+        transport, send = "SMTP", _send_smtp
+    else:
+        _log_code(to_email, code, "NO MAIL TRANSPORT CONFIGURED")
+        return
+
+    try:
+        send(to_email, code)
+        logging.info("Verification email sent to %s via %s", to_email, transport)
+    except Exception as exc:
+        logging.error("%s delivery failed for %s: %s", transport, to_email, exc)
+        _log_code(to_email, code, f"{transport} FAILED - code logged instead")</code></pre>
+<p><b>This function never raises.</b> The user row is committed <i>before</i> the email is sent, so if sending raised, a mail outage would return 500 for an account that was actually created — and the user could never retry with that email, because it's now taken.</p>
+<div class="note"><b>The production bug worth telling.</b> Gmail SMTP worked locally and failed on Render with <code>[Errno 101] Network is unreachable</code>. Cloud hosts block outbound SMTP ports as anti-spam. Fixed by sending over an HTTPS email API — port 443 is never blocked.</div>`,
+  qs:[
+   ["Why are two hashes of the same password different?","Each includes a random salt. Without it, identical passwords produce identical hashes and cracking one cracks them all."],
+   ["Why secrets instead of random?","random is predictable from previous outputs. Fine for shuffling a UI, catastrophic for a verification code."],
+   ["Why increment attempts before returning 'wrong'?","So the count always lands. Increment afterwards and a client could abandon the request to dodge the limit."],
+   ["Why is a 6-digit code safe?","Alone it isn't. The 5-attempt lockout, 10-minute expiry and single use are what make it safe."],
+   ["Why must email delivery never raise?","The user row is already committed. Raising would return 500 for a created account, and the email would then be permanently taken."]
+  ]
+},
+{
+  n:7, title:"JWT and protecting routes", sub:"auth_services.py · dependencies.py · account_service.py",
+  body:`
+<h3>Why a token</h3>
+<p>The server is stateless, so each request must prove who you are. Not the password — possession grants access, it never expires, and it would cross the network hundreds of times a day. Not the password <b>hash</b> either: that would make the hash the credential, so a database leak would hand out working keys.</p>
+<p>You want something <b>temporary, disposable, and not your password</b>.</p>
+
+<div class="file">backend/app/services/auth_services.py — the whole file</div>
+<pre><code>import os
+from datetime import datetime, timedelta
+from jose import JWTError, jwt
+
+SECRET_KEY = os.getenv("SECRET_KEY", "supersecretkey")
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_HOURS = 12
+
+
+def create_access_token(data: dict):
+    to_encode = data.copy()          # never mutate the caller's dict
+    expiration_time = datetime.utcnow() + timedelta(hours=ACCESS_TOKEN_EXPIRE_HOURS)
+    to_encode.update({"exp": expiration_time})
+    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+
+
+def verify_access_token(token: str):
+    try:
+        return jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+    except JWTError:
+        return None</code></pre>
+<p><code>data.copy()</code> matters: without it you'd add <code>exp</code> to the dict the caller passed in, a side effect they never asked for.</p>
+<p><code>jwt.decode</code> checks <b>two</b> things — the signature and the expiry. Any failure returns None, so callers get a single "invalid" signal rather than four exception types.</p>
+<p>The default <code>"supersecretkey"</code> is for development. Render generates a real one via <code>generateValue: true</code>.</p>
+
+<h4>What a JWT actually is</h4>
+<pre><code>header . payload . signature
+eyJhbGci… . eyJzdWIi… . SflKxwRJ…</code></pre>
+<table><tr><th>Part</th><th>Contents</th></tr>
+<tr><td>header</td><td>which algorithm</td></tr>
+<tr><td>payload</td><td>{"sub": your email, "exp": expiry}</td></tr>
+<tr><td>signature</td><td>computed from header + payload + SECRET_KEY</td></tr></table>
+<div class="note">The payload is <b>readable by anyone</b> — base64, not encryption. Paste a token into jwt.io and you'll see your email. Never put secrets in it. What it <i>is</i> is <b>unforgeable</b>: change one character and the signature stops matching, and you can't compute a new one without the key.</div>
+
+<div class="file">backend/app/dependencies.py — the whole file</div>
+<pre><code>oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
+
+
+def get_current_user(
+    token: str = Depends(oauth2_scheme),
+    db: Session = Depends(get_db),
+) -> User:
+    credentials_exception = HTTPException(
+        status_code=401,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+
     payload = verify_access_token(token)
-    if payload is None: raise credentials_exception
+    if payload is None:
+        raise credentials_exception
+
     email = payload.get("sub")
-    if email is None: raise credentials_exception
+    if email is None:
+        raise credentials_exception
+
     user = db.query(User).filter(User.email == email).first()
-    if user is None: raise credentials_exception
+    if user is None:
+        raise credentials_exception
+
     return user</code></pre>
-<p>Three failure points, <b>one identical error</b>. Saying "valid token but no such user" would tell an attacker something useful.</p>
-<p><code>oauth2_scheme</code> reads the <code>Authorization: Bearer …</code> header. A missing header is a 401 before your code runs.</p>
-<h3>Login</h3>
-<pre><code>if not user or not verify_password(credentials.password, user.password_hash):
-    raise HTTPException(401, "Incorrect email or password")
-if not user.is_verified:
-    raise HTTPException(403, "Email not verified")</code></pre>
-<p>Unknown email and wrong password give the <b>same</b> 401, so accounts can't be enumerated. Unverified gets 403 — a different case, and the frontend uses it to switch to the OTP screen.</p>
-<h3>Account deletion</h3>
-<p>Password re-entry is required, so a stolen token alone can't destroy data. It's a <b>soft delete</b>: a timestamp is set, and for 5 days it can be cancelled. A purge job (startup and on login) deletes children before the parent, so foreign keys never break.</p>`,
+<h4>Three things worth noticing</h4>
+<p><b>A dependency with its own dependencies.</b> <code>get_current_user</code> needs <code>oauth2_scheme</code> (to read the header) and <code>get_db</code> (to look the user up). FastAPI resolves the whole chain before your endpoint runs.</p>
+<p><b>One error object, raised three times.</b> Bad signature, malformed payload, deleted user — all identical. Saying "valid token but no such user" would confirm the token was genuine, which is information.</p>
+<p><b>It returns a User, not an email.</b> So endpoints get the full row ready to use, and never repeat the lookup.</p>
+<p><code>WWW-Authenticate: Bearer</code> is the HTTP spec's way of telling the client which auth scheme to use.</p>
+
+<div class="file">backend/app/api/auth.py — login</div>
+<pre><code>@router.post("/login", response_model=Token)
+def login(credentials: UserLogin, db: Session = Depends(get_db)):
+    purge_expired_accounts(db)      # opportunistic housekeeping
+
+    user = db.query(User).filter(User.email == credentials.email).first()
+
+    if not user or not verify_password(credentials.password, user.password_hash):
+        raise HTTPException(status_code=401, detail="Incorrect email or password")
+
+    if not user.is_verified:
+        raise HTTPException(status_code=403, detail="Email not verified")
+
+    token = create_access_token({"sub": user.email})
+    return {"access_token": token, "token_type": "bearer"}</code></pre>
+<p><b>One condition, two failures.</b> Unknown email and wrong password produce the identical 401, so nobody can discover which addresses have accounts.</p>
+<p><b>403 is separate on purpose</b> — the frontend reads it and switches to the OTP screen.</p>
+
+<div class="file">backend/app/services/account_service.py — the whole file</div>
+<pre><code>GRACE_PERIOD_DAYS = 5
+
+
+def purge_expired_accounts(db: Session) -> int:
+    cutoff = datetime.utcnow() - timedelta(days=GRACE_PERIOD_DAYS)
+    expired = (
+        db.query(User)
+        .filter(User.delete_requested_at.isnot(None),
+                User.delete_requested_at <= cutoff)
+        .all()
+    )
+    for user in expired:
+        # Children first, then the parent, so foreign keys are never violated.
+        db.query(Activity).filter(Activity.user_id == user.id).delete()
+        db.query(EmailOTP).filter(EmailOTP.email == user.email).delete()
+        db.delete(user)
+    db.commit()
+    return len(expired)</code></pre>
+<p><b>Order matters.</b> Delete the user first and the activities would still point at a user id that no longer exists — the foreign key forbids it. Children first, always.</p>
+<p><b>Soft delete</b> means the row survives with a timestamp, so it can be cancelled for 5 days. Requesting deletion needs the password again, so a stolen token alone can't destroy data.</p>
+<p>Running this on login and at startup is "opportunistic cleanup" — no cron job needed at this scale. A bigger app would use a scheduled task.</p>`,
   qs:[
-   ["Can someone forge a token claiming to be you?","No. They can build header and payload, but the signature is computed with the server's SECRET_KEY, which they don't have. Verification fails → 401."],
-   ["Is a JWT encrypted?","No — encoded. Anyone can read the payload. It's tamper-proof, not secret. Never put anything sensitive inside it."],
-   ["Why do all three failure paths return the same message?","So an attacker can't tell which check failed. 'Valid token, unknown user' would confirm a token was genuine."],
-   ["Why 401 for wrong password but 403 for unverified?","401 means 'I don't know who you are'. 403 means 'I know you, but you can't do this yet'. The frontend uses the 403 to show the OTP screen."]
+   ["Can someone forge a token claiming to be you?","No. They can build header and payload, but the signature needs SECRET_KEY. Verification fails → 401."],
+   ["Is a JWT encrypted?","No, encoded. Anyone can read the payload. It's tamper-proof, not secret."],
+   ["Why do all three failure paths raise the same error?","So an attacker can't tell which check failed. 'Valid token, unknown user' would confirm the token was genuine."],
+   ["Why delete activities before the user?","The foreign key requires every activity to point at a real user. Delete the parent first and the constraint is violated."],
+   ["Why does deleting an account need the password again?","So a stolen but still-valid token can't destroy someone's data on its own."]
   ]
 },
 {
-  n:8, title:"Activities and ownership", sub:"CRUD · the security-critical bit",
+  n:8, title:"Activities and ownership", sub:"activities.py — the security-critical file",
   body:`
-<h3>The ownership helper</h3>
-<pre><code>def get_owned_activity(activity_id, db, user):
-    activity = (db.query(Activity)
-                  .filter(Activity.id == activity_id,
-                          Activity.user_id == user.id)
-                  .first())
+<div class="file">backend/app/api/activities.py — the ownership helper</div>
+<pre><code>router = APIRouter(prefix="/activities", tags=["activities"])
+
+
+def get_owned_activity(activity_id: int, db: Session, user: User) -> Activity:
+    activity = (
+        db.query(Activity)
+        .filter(Activity.id == activity_id,
+                Activity.user_id == user.id)
+        .first()
+    )
     if activity is None:
-        raise HTTPException(404, "Activity not found")
+        raise HTTPException(status_code=404, detail="Activity not found")
     return activity</code></pre>
-<div class="note">This is the most important code in the app. Filtering on <b>both</b> id and user_id means another user's activity is simply not found — the query can't return it.</div>
-<h3>Why 404 and not 403</h3>
-<p>403 would mean "this exists, but it isn't yours" — which confirms the record exists. 404 makes someone else's data indistinguishable from data that was never there.</p>
-<h3>Creating</h3>
-<pre><code>activity = Activity(user_id=current_user.id, ...)</code></pre>
-<p>The owner comes from the <b>verified token</b>, never from the request body. If it came from the body, anyone could log activities into your account by editing the JSON.</p>
-<h3>Partial update</h3>
-<pre><code>for field, value in payload.model_dump(exclude_unset=True).items():
-    setattr(activity, field, value)</code></pre>
-<p><code>exclude_unset</code> means only fields the client actually sent are applied. Send <code>{"rpe": 9}</code> and everything else stays as it was.</p>
-<pre><code>if activity.activity_type in DISTANCE_TYPES:
-    if activity.distance_km is None:
-        raise HTTPException(422, "requires a distance in km")
-else:
-    activity.distance_km = None</code></pre>
-<p>Re-checked <b>after</b> applying changes, because switching a run to yoga must clear the distance.</p>
-<h3>Listing</h3>
-<pre><code>.filter(Activity.user_id == current_user.id)
-.order_by(Activity.date.desc(), Activity.id.desc())
-.offset(offset).limit(min(limit, 200))</code></pre>
-<p>The cap of 200 stops someone requesting a million rows in one go.</p>`,
+<div class="note">This is the most important code in the app. Filtering on <b>both</b> id and user_id means another user's activity is <i>not found</i> — the query physically cannot return it. Authorisation happens in the query, not in an <code>if</code> afterwards, so there's no path that forgets to check.</div>
+<h4>Why 404 and not 403</h4>
+<p>403 says "this exists, but it isn't yours" — which confirms it exists. 404 makes someone else's data indistinguishable from data that never existed. Existence is itself information.</p>
+
+<div class="file">create</div>
+<pre><code>@router.post("", response_model=ActivityOut, status_code=201)
+def create_activity(
+    payload: ActivityCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    activity = Activity(
+        user_id=current_user.id,          # from the TOKEN, never the body
+        activity_type=payload.activity_type,
+        distance_km=payload.distance_km,
+        duration_min=payload.duration_min,
+        rpe=payload.rpe,
+        avg_hr=payload.avg_hr,
+        date=payload.date or date_type.today(),
+        notes=payload.notes,
+    )
+    db.add(activity)
+    db.commit()
+    db.refresh(activity)
+    return activity</code></pre>
+<p><code>user_id=current_user.id</code> is the single most important line for security. If ownership came from <code>payload</code>, anyone could log activities into your account by editing the JSON.</p>
+<p><code>payload.date or date_type.today()</code> — date is optional, so it's None when omitted, and <code>None or today()</code> evaluates to today.</p>
+
+<div class="file">list</div>
+<pre><code>@router.get("", response_model=List[ActivityOut])
+def list_activities(
+    limit: int = 50,
+    offset: int = 0,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    return (
+        db.query(Activity)
+        .filter(Activity.user_id == current_user.id)
+        .order_by(Activity.date.desc(), Activity.id.desc())
+        .offset(offset)
+        .limit(min(limit, 200))
+        .all()
+    )</code></pre>
+<p><code>min(limit, 200)</code> caps the page size regardless of what's asked for — otherwise <code>?limit=1000000</code> would try to load everything into memory.</p>
+<p>The second sort key (<code>id.desc()</code>) breaks ties: two activities on the same date get a stable order, so pagination can't show the same row twice.</p>
+
+<div class="file">update — partial edits</div>
+<pre><code>@router.put("/{activity_id}", response_model=ActivityOut)
+def update_activity(activity_id: int, payload: ActivityUpdate, db=..., current_user=...):
+    activity = get_owned_activity(activity_id, db, current_user)
+
+    for field, value in payload.model_dump(exclude_unset=True).items():
+        setattr(activity, field, value)
+
+    # Switching type can invalidate the distance, so re-check the final state.
+    if activity.activity_type in DISTANCE_TYPES:
+        if activity.distance_km is None:
+            raise HTTPException(422, f"'{activity.activity_type}' requires a distance in km")
+    else:
+        activity.distance_km = None
+
+    db.commit()
+    db.refresh(activity)
+    return activity</code></pre>
+<p><code>model_dump(exclude_unset=True)</code> returns only the fields the client actually sent. Send <code>{"rpe": 9}</code> and everything else is untouched. Without it, every omitted field would become None and wipe your data.</p>
+<p><code>setattr(activity, field, value)</code> sets an attribute whose name is in a variable — the generic way to apply "whatever they sent".</p>
+<p>The re-check afterwards exists because changing a run to yoga must clear the distance. Validation on the incoming payload alone can't see the final combination.</p>
+
+<div class="file">delete</div>
+<pre><code>@router.delete("/{activity_id}", status_code=204)
+def delete_activity(activity_id: int, db=..., current_user=...):
+    activity = get_owned_activity(activity_id, db, current_user)
+    db.delete(activity)
+    db.commit()
+    # 204 No Content: success with a deliberately empty body</code></pre>
+<p>No <code>return</code>. 204 means "done, nothing to say" — sending a body with it would violate the spec.</p>`,
   qs:[
-   ["What single line stops one user reading another's data?","<code>.filter(Activity.id == activity_id, Activity.user_id == user.id)</code> — both conditions, so a wrong owner simply finds nothing."],
-   ["Why 404 instead of 403 for someone else's activity?","403 confirms the record exists. Existence itself is information worth hiding."],
-   ["Why does user_id come from the token and not the body?","Anything in the body is client-controlled. Taking it from the verified token makes impersonation impossible."],
-   ["What does <code>exclude_unset=True</code> do?","Only applies fields the client actually sent, so a partial update doesn't wipe the fields it omitted."]
+   ["Which line stops one user reading another's data?","The filter on both Activity.id and Activity.user_id. A wrong owner simply finds nothing."],
+   ["Why 404 instead of 403?","403 confirms the record exists. Existence is information worth hiding."],
+   ["Why does user_id come from the token, not the body?","Anything in the body is client-controlled. Taking it from the verified token makes impersonation impossible."],
+   ["What would break without exclude_unset=True?","Every field the client omitted would be set to None, wiping data on every partial update."],
+   ["Why re-validate after applying an update?","Changing the sport can invalidate the distance. Only the final combination can be checked."]
   ]
 },
 {
-  n:9, title:"The analytics engine", sub:"the formulas — the interesting part",
+  n:9, title:"The analytics engine", sub:"analytics.py — every formula",
   body:`
-<h3>Training load (session-RPE)</h3>
+<div class="file">shared helpers</div>
+<pre><code>def _user_activities(db: Session, user: User) -> List[Activity]:
+    return db.query(Activity).filter(Activity.user_id == user.id).all()
+
+
+def _with_distance(acts):
+    # Strength work and sports carry no distance, so mileage, pace and
+    # longest-run must ignore them.
+    return [a for a in acts if a.distance_km]</code></pre>
+<p>The leading underscore is a convention meaning "internal to this module". Every endpoint starts from <code>_user_activities</code>, so the ownership filter is written once.</p>
+
+<h3>Training load — the headline metric</h3>
 <pre><code>load = duration_min × rpe</code></pre>
-<p>Works for <b>every</b> sport, which is why it — not distance — is the headline metric. A 45-minute gym session at RPE 8 = 360, comparable to a run.</p>
-<h3>ACWR — acute:chronic workload ratio</h3>
-<pre><code>acwr = last 7 days of load ÷ (last 28 days ÷ 4)</code></pre>
-<table><tr><th>Value</th><th>Meaning</th></tr>
+<p>The <b>session-RPE</b> method. It works for <i>every</i> sport, which is why it — not distance — is the metric everything else builds on. A 45-minute gym session at RPE 8 scores 360, directly comparable to a run.</p>
+
+<div class="file">summary</div>
+<pre><code>dist_acts = _with_distance(acts)
+total_km  = sum(a.distance_km for a in dist_acts)
+total_min = sum(a.duration_min for a in acts)
+dist_min  = sum(a.duration_min for a in dist_acts)
+
+"avg_pace_min_per_km": round(dist_min / total_km, 2) if total_km else None,</code></pre>
+<div class="note"><b>Pace divides by dist_min, not total_min.</b> Include gym time and a 55-minute strength session would wreck your minutes-per-km even though you covered no ground. Three variables where a careless version would use one.</div>
+
+<div class="file">weekly</div>
+<pre><code>today = date.today()
+this_monday = today - timedelta(days=today.weekday())
+
+for i in range(weeks - 1, -1, -1):
+    week_start = this_monday - timedelta(weeks=i)
+    week_end   = week_start + timedelta(days=6)
+    in_week = [a for a in acts if week_start &lt;= a.date &lt;= week_end]
+
+    buckets.append({
+        "week_start": week_start.isoformat(),
+        "activities": len(in_week),
+        "distance_km": round(sum(a.distance_km or 0 for a in in_week), 2),
+        "training_load": round(sum(a.duration_min * a.rpe for a in in_week)),
+    })</code></pre>
+<p><code>today.weekday()</code> is 0 on Monday, so subtracting it lands on this week's Monday. Buckets are Monday-anchored so they match how people think about a training week.</p>
+<p><code>a.distance_km or 0</code> handles the None from gym sessions — without it, <code>sum</code> raises on None.</p>
+<p>The loop counts <b>down</b> to zero, so the list comes back oldest-first and the chart draws left to right.</p>
+
+<div class="file">records</div>
+<pre><code>dist_acts = _with_distance(acts)
+paceable  = [a for a in dist_acts if a.distance_km >= 1]
+
+"longest_distance": max(dist_acts, key=lambda a: a.distance_km) if dist_acts else None,
+"longest_duration": max(acts, key=lambda a: a.duration_min),          # ALL sports
+"best_pace":        min(paceable, key=lambda a: a.duration_min / a.distance_km) if paceable else None,</code></pre>
+<p>Three different populations, deliberately. Longest <b>distance</b> only makes sense for distance sports. Longest <b>session</b> spans everything — a three-hour football match counts. Best <b>pace</b> ignores anything under 1 km, so a 200 m sprint can't claim the record.</p>
+
+<div class="file">streak</div>
+<pre><code>active_days = sorted({a.date for a in _user_activities(db, current_user)})
+
+longest = run = 1
+for prev, curr in zip(active_days, active_days[1:]):
+    run = run + 1 if (curr - prev).days == 1 else 1
+    longest = max(longest, run)
+
+today = date.today()
+day_set = set(active_days)
+anchor = today if today in day_set else today - timedelta(days=1)
+current = 0
+while anchor in day_set:
+    current += 1
+    anchor -= timedelta(days=1)</code></pre>
+<p><code>{a.date for ...}</code> is a set, so three sessions in one day count as one day.</p>
+<p><code>zip(list, list[1:])</code> pairs each day with the next — a neat way to walk consecutive pairs.</p>
+<p>The anchor line is the thoughtful bit: if you haven't logged <i>today</i> yet, it starts from yesterday, so your streak isn't reported as broken at 9am before your evening run.</p>
+
+<div class="file">load-metrics — ACWR, monotony, strain</div>
+<pre><code>daily = {}
+for a in acts:
+    daily[a.date] = daily.get(a.date, 0) + a.duration_min * a.rpe
+
+last7  = [daily.get(today - timedelta(days=i), 0.0) for i in range(7)]
+last28 = [daily.get(today - timedelta(days=i), 0.0) for i in range(28)]
+
+acute = sum(last7)
+chronic_weekly = sum(last28) / 4
+acwr = round(acute / chronic_weekly, 2) if enough_history else None</code></pre>
+<table><tr><th>ACWR</th><th>Meaning</th></tr>
 <tr><td>&lt; 0.8</td><td>detraining</td></tr>
 <tr><td>0.8 – 1.3</td><td>optimal</td></tr>
 <tr><td>1.3 – 1.5</td><td>elevated</td></tr>
 <tr><td>&gt; 1.5</td><td>spike — the injury-risk pattern</td></tr></table>
-<p>Needs at least 14 days of history, otherwise it's meaningless.</p>
-<h3>Monotony and strain (Foster)</h3>
-<pre><code>monotony = mean daily load ÷ standard deviation of daily load
-strain   = weekly load × monotony</code></pre>
-<p>Above ~2.0 means every day looks the same, which predicts staleness. Good weeks have genuinely hard and genuinely easy days.</p>
-<div class="note"><b>Two edge cases worth quoting in an interview.</b> Identical load every day gives SD 0 — that's <i>maximum</i> monotony, not an absence of it, so it's capped and labelled. And fewer than 3 training days makes the ratio meaningless, because rest days dominate the spread, so it's withheld.</div>
-<h3>Threshold pace</h3>
-<p>Roughly the pace you could hold for an hour. Estimated as your fastest session past a <b>sport-specific</b> minimum — 3 km for a run, 8 km on a bike, 0.4 km in a pool. One global minimum would have excluded swimmers entirely. Sports with no qualifying session fall back to a default flagged <code>is_default: true</code>.</p>
+<p>Rest days count as zeros — that's real training data, not missing data. Requires 14 days of history, otherwise the ratio is noise.</p>
+<pre><code>sd   = statistics.pstdev(last7)
+mean = sum(last7) / 7
+training_days = sum(1 for v in last7 if v > 0)
+
+if mean == 0:
+    monotony, status = None, "no training logged this week"
+elif training_days &lt; 3:
+    monotony, status = None, "needs 3+ training days"
+elif sd == 0:
+    monotony, status = 5.0, "too uniform"     # identical every day
+else:
+    monotony = round(mean / sd, 2)
+
+strain = round(acute * monotony) if monotony else None</code></pre>
+<div class="note"><b>The two edge cases worth quoting.</b> Identical load every day gives SD 0 — that's <i>maximum</i> monotony, not an absence of it; my first version reported "not enough variation", which was exactly backwards. And fewer than 3 training days makes the ratio meaningless because rest days dominate the spread, so it's withheld rather than reported wrong.</div>
+<p><code>pstdev</code> is <b>population</b> standard deviation — these seven days are the whole week, not a sample drawn from it.</p>
+
+<div class="file">thresholds — three tiers</div>
+<pre><code>def _riegel_factor(minutes: float) -> float:
+    factor = (THRESHOLD_TARGET_MINUTES / minutes) ** RIEGEL_EXPONENT
+    return min(factor, RIEGEL_MAX_FACTOR)
+
+
+cutoff = date.today() - timedelta(days=THRESHOLD_LOOKBACK_DAYS)
+
+for a in _user_activities(db, current_user):
+    if a.activity_type not in DISTANCE_TYPES or not a.distance_km: continue
+    if a.date &lt; cutoff: continue
+
+    pace = a.duration_min / a.distance_km
+    min_km = THRESHOLD_MIN_KM.get(a.activity_type, 3.0)
+
+    if a.duration_min >= THRESHOLD_MIN_MINUTES and a.distance_km >= min_km:
+        # tier 1: personal
+    elif a.duration_min >= THRESHOLD_SHORT_MIN_MINUTES:
+        adjusted = pace * _riegel_factor(a.duration_min)
+        # tier 2: estimated</code></pre>
+<table><tr><th>Tier</th><th>Source</th></tr>
+<tr><td>personal</td><td>fastest session past this sport's minimum</td></tr>
+<tr><td>estimated</td><td>fastest shorter effort, corrected</td></tr>
+<tr><td>default</td><td>a generic value — no history at all</td></tr></table>
+<p><b>Sport-specific minimums:</b> 3 km run, 8 km ride, 0.4 km swim. One global minimum would have excluded swimmers entirely.</p>
+<p><b>90-day window:</b> without it, a personal best from a year ago keeps the threshold optimistic forever and every session after a break scores as too easy.</p>
+<p><b>Riegel correction:</b> you hold a faster pace for 10 minutes than for an hour, so a short effort overstates fitness. A 14-minute effort implies ~9% slower; capped at 15%.</p>
+<div class="note"><b>Why it matters:</b> a beginner's easy 2 km jog at 8:30/km scored <b>RPE 3</b> against the generic 5:30 threshold — "very easy". Against their own estimated 7:38 threshold it scores <b>RPE 7</b>. The generic default is a fit runner's pace, so it made every beginner look like they weren't trying.</div>
+<pre><code>entry["is_default"] = entry["source"] == "default"</code></pre>
+<p>Kept deliberately when <code>source</code> replaced it. Removing a field breaks every existing client instantly; adding one breaks nothing. That's how you evolve an API.</p>
+
 <h3>Estimated RPE — two routes</h3>
 <pre><code># from pace (distance sports, no hardware)
-IF  = threshold pace ÷ session pace
-rpe = 1 + 9 × (IF − 0.55) ÷ 0.5
+IF  = threshold_pace / session_pace
+rpe = 1 + 9 × (IF − 0.55) / 0.5
 
 # from heart rate (any sport, needs a monitor)
-%HRR = (HRavg − HRrest) ÷ (HRmax − HRrest)     # Karvonen
+%HRR = (HRavg − HRrest) / (HRmax − HRrest)      # Karvonen
 rpe  = %HRR × 10
-HRmax = 208 − 0.7 × age                        # Tanaka</code></pre>
-<p>Heart rate wins when both are available, because it measures internal load rather than output. Karvonen is used over plain %HRmax because it positions the session between <i>your</i> resting and max, not as a raw percentage.</p>
-<h3>Average pace</h3>
-<p>Divides by the time spent in <b>distance sports only</b>. Include gym time and a 55-minute strength session would wreck your min/km even though you covered no ground.</p>`,
+HRmax = 208 − 0.7 × age                         # Tanaka</code></pre>
+<p>Heart rate wins when both exist, because it measures internal load rather than output. Karvonen beats plain %HRmax because it places the session between <i>your</i> resting and max rather than as a raw percentage — even sitting still is ~40% of max.</p>`,
   qs:[
-   ["Why is training load the headline metric instead of distance?","Load = duration × RPE works for every sport. Distance is meaningless for a gym session or a football match."],
-   ["What ACWR value would worry you and why?","Above 1.5 — this week is far above your four-week average, the spike pattern associated with injury risk."],
-   ["Zero variance in daily load — what should monotony report?","Maximum monotony. SD is 0 so the ratio is infinite; reporting 'not enough variation' would be exactly backwards."],
-   ["Why is average pace calculated only over distance sports?","Otherwise time spent in the gym, covering no distance, would drag your minutes-per-km down and make the number meaningless."],
-   ["Why sport-specific minimums for threshold pace?","3 km is a warm-up on a bike and a long way in a pool. A single global minimum would have excluded swimmers from ever getting an estimate."]
+   ["Why is training load the headline metric rather than distance?","duration × RPE works for every sport. Distance is meaningless for a gym session or a football match."],
+   ["Why does average pace divide by distance-sport time only?","Otherwise gym time, covering no distance, drags your minutes-per-km down and makes the number meaningless."],
+   ["Zero variance in daily load — what should monotony report?","Maximum monotony. SD is 0 so the ratio is infinite; reporting 'not enough variation' is exactly backwards."],
+   ["Why are there three different populations in records?","Longest distance only makes sense for distance sports; longest session spans everything; best pace excludes efforts under 1 km so a sprint can't win."],
+   ["Why keep is_default after adding source?","Removing a field breaks existing clients immediately; adding one breaks nothing. Backwards-compatible API evolution."],
+   ["Why does the streak anchor to yesterday if today is empty?","So your streak isn't reported broken at 9am, before you've done your evening session."]
   ]
 },
 {
-  n:10, title:"The frontend", sub:"one file, no framework",
+  n:10, title:"The frontend", sub:"index.html — the JavaScript that matters",
   body:`
-<p>The whole app is one <code>index.html</code> — landing page, auth screens and dashboard, served by FastAPI itself.</p>
+<p>One file: landing page, auth screens and dashboard, served by FastAPI. No framework — plain JavaScript.</p>
+
 <h3>Why FastAPI serves it</h3>
-<p>Opening it as a <code>file://</code> page gives the browser no real origin. That breaks the password manager (the Credential Management API needs a secure context) and makes OAuth impossible. Served from <code>http://localhost:8000</code> it's a proper origin — and frontend and API become same-origin, so CORS disappears.</p>
+<p>Opening it as <code>file://</code> gives the browser no real origin. That breaks the password manager (the Credential Management API needs a secure context) and makes OAuth impossible. Served from <code>http://localhost:8000</code> it's a proper origin, and frontend and API become same-origin so CORS disappears entirely.</p>
+
 <h3>One state object</h3>
-<pre><code>const state = { me, activities, summary, weekly, records,
-                streak, filter, scope, sort, weeks, goals };</code></pre>
-<p>Every render function reads from here. One refresh reloads everything, so no widget can disagree with another.</p>
-<h3>The fetch wrapper</h3>
-<pre><code>async function api(method, path, body) {
-  const headers = {"Content-Type":"application/json"};
+<pre><code>const state = {
+  me: null, activities: [], summary: null, weekly: [], records: null,
+  streak: null, thresholds: null, status: null,
+  filter: "all", scope: "all", sort: "date-desc", weeks: 8,
+  editingId: null, goals: loadGoals(),
+};</code></pre>
+<p>Every render function reads from here and nowhere else. One refresh reloads everything, so no widget can disagree with another. That's the discipline a framework would normally enforce for you.</p>
+
+<h3>The fetch wrapper — the most reused function</h3>
+<pre><code>const API = location.protocol.startsWith("http") ? "" : "http://localhost:8000";
+
+async function api(method, path, body) {
+  const headers = { "Content-Type": "application/json" };
   const token = localStorage.getItem("token");
   if (token) headers["Authorization"] = "Bearer " + token;
-  ...
-  if (resp.status === 401) { logout(); throw ... }
+
+  const resp = await fetch(API + path, {
+    method, headers,
+    body: body ? JSON.stringify(body) : undefined,
+  });
+
+  if (resp.status === 401 && !["/login", "/verify-email"].includes(path)) {
+    logout();
+    throw new Error("Session expired - please log in again");
+  }
+  if (resp.status === 204) return null;
+
+  const data = await resp.json().catch(() => ({}));
+  if (!resp.ok) {
+    const detail = typeof data.detail === "string" ? data.detail : "Request failed (" + resp.status + ")";
+    const err = new Error(detail);
+    err.status = resp.status;
+    throw err;
+  }
+  return data;
 }</code></pre>
-<p>One place attaches the token, parses JSON, and turns errors into readable messages. Written once, used by every call.</p>
-<h3>Remember me</h3>
-<p>Only the <b>email</b> goes in localStorage. The password is handed to the browser's Credential Management API, which stores it in the OS keychain. Anything in localStorage is readable by any JavaScript on the page — one XSS bug and the password is gone.</p>
-<h3>Password generator</h3>
-<p>Uses <code>crypto.getRandomValues</code>, never <code>Math.random</code>. Takes one character from each required set, fills the rest, then shuffles — so it satisfies every rule <b>by construction</b> rather than by chance.</p>
-<h3>Theming</h3>
-<p>System / Light / Dark. "System" removes the attribute so the <code>prefers-color-scheme</code> media query takes over. A tiny script in <code>&lt;head&gt;</code> applies the saved choice <b>before</b> the page paints, so there's no flash of the wrong theme.</p>`,
+<h4>Every line earns its place</h4>
+<ul>
+<li><b>Empty API base when served over http</b> — same-origin, so no CORS at all. The localhost fallback only matters if you open the file directly.</li>
+<li><b>Token attached in one place.</b> Twenty-plus call sites, one place that knows about auth.</li>
+<li><b>401 → logout</b>, except on login itself, where a 401 means "wrong password" and shouldn't log you out of a session you don't have.</li>
+<li><b>204 returns null</b> before parsing — a 204 has no body, and <code>resp.json()</code> on an empty body throws.</li>
+<li><b>err.status is attached</b> so callers can branch. That's how a 403 at login switches to the OTP screen instead of showing an error.</li>
+</ul>
+
+<h3>The 403 branch</h3>
+<pre><code>try {
+  const tok = await api("POST", "/login", { email, password });
+  localStorage.setItem("token", tok.access_token);
+  await rememberIfWanted(email, password);
+  enterApp();
+} catch (e) {
+  if (e.status === 403) { showOtpStep(email); resendOtp(true); }
+  else $("auth-error").textContent = e.message;
+}</code></pre>
+<p>The backend's deliberate choice of 403 for "unverified" pays off here: the frontend can tell "wrong password" from "right password, unverified account" and behave differently.</p>
+
+<h3>Rendering — one refresh, then draw</h3>
+<pre><code>async function refreshAll() {
+  const [summary, weekly, records, streak, activities, status, thresholds] =
+    await Promise.all([
+      api("GET", "/analytics/summary"),
+      api("GET", "/analytics/weekly?weeks=" + state.weeks),
+      api("GET", "/analytics/records"),
+      api("GET", "/analytics/streak"),
+      api("GET", "/activities?limit=200"),
+      api("GET", "/analytics/load-metrics"),
+      api("GET", "/analytics/thresholds"),
+    ]);
+  Object.assign(state, { summary, weekly, records, streak, activities, status, thresholds });
+  renderProfile(); renderGoals(); renderFeed(); renderChart(); ...
+}</code></pre>
+<p><code>Promise.all</code> fires all seven requests <b>at once</b> rather than one after another. Seven sequential round trips would be seven times slower; in parallel the whole refresh costs about as long as the slowest one.</p>
+
+<h3>Filtering happens in the browser</h3>
+<pre><code>function visibleActivities() {
+  const list = state.activities.filter(a => {
+    if (state.filter !== "all" && meta(a.activity_type).cat !== state.filter) return false;
+    if (state.scope === "week"  && a.date &lt; mondayKey) return false;
+    if (state.scope === "notes" && !a.notes) return false;
+    return true;
+  });
+  const sorters = {
+    "date-desc": (a, b) => b.date.localeCompare(a.date) || b.id - a.id,
+    "dist-desc": (a, b) => (b.distance_km || 0) - (a.distance_km || 0),
+    "load-desc": (a, b) => (b.duration_min * b.rpe) - (a.duration_min * a.rpe),
+  };
+  return list.sort(sorters[state.sort]);
+}</code></pre>
+<p>200 activities are already in memory, so filtering and sorting is instant with no server round trip. <code>|| b.id - a.id</code> is a tie-breaker: <code>localeCompare</code> returns 0 for equal dates, which is falsy, so the second comparison runs.</p>
+<p><code>(b.distance_km || 0)</code> guards against gym sessions, where subtracting null would give NaN and scramble the sort.</p>
+
+<h3>Escaping user text — the XSS guard</h3>
+<pre><code>function escapeHtml(s) {
+  return String(s).replace(/[&amp;&lt;>"']/g, c =>
+    ({ "&amp;":"&amp;amp;", "&lt;":"&amp;lt;", ">":"&amp;gt;", '"':"&amp;quot;", "'":"&amp;#39;" }[c]));
+}
+
+\${a.notes ? \`&lt;div class="ac-desc">\${escapeHtml(a.notes)}&lt;/div>\` : ""}</code></pre>
+<div class="note">Notes are user-typed and inserted with <code>innerHTML</code>. Without escaping, a note containing <code>&lt;script>…&lt;/script></code> would <b>execute</b> — that's cross-site scripting, and it could read your token straight out of localStorage. Escaping turns the tags into harmless text.</div>
+
+<h3>Remember me — where the password goes</h3>
+<pre><code>async function rememberIfWanted(email, password, name) {
+  if (!$("remember-me").checked) { localStorage.removeItem("rememberedEmail"); return; }
+  localStorage.setItem("rememberedEmail", email);
+
+  if (window.PasswordCredential && navigator.credentials) {
+    try {
+      await navigator.credentials.store(new PasswordCredential({
+        id: email, password, name: name || email,
+      }));
+    } catch (_) { /* user dismissed the prompt */ }
+  }
+}</code></pre>
+<p>Only the <b>email</b> goes in localStorage. The password is handed to the browser, which stores it in the OS keychain and shows its own "Save password?" prompt. Anything in localStorage is readable by any JavaScript on the page — one XSS bug and a stored password is gone.</p>
+
+<h3>The password generator</h3>
+<pre><code>function generatePassword(length = 16) {
+  const lower = "abcdefghijkmnopqrstuvwxyz";   // no l
+  const upper = "ABCDEFGHJKLMNPQRSTUVWXYZ";    // no I or O
+  const digits = "23456789";                   // no 0 or 1
+  const special = "!@#$%^&amp;*-_=+?";
+  const all = lower + upper + digits + special;
+
+  const pick = set => set[crypto.getRandomValues(new Uint32Array(1))[0] % set.length];
+  const chars = [pick(lower), pick(upper), pick(digits), pick(special)];
+  while (chars.length &lt; length) chars.push(pick(all));
+
+  for (let i = chars.length - 1; i > 0; i--) {          // Fisher-Yates
+    const j = crypto.getRandomValues(new Uint32Array(1))[0] % (i + 1);
+    [chars[i], chars[j]] = [chars[j], chars[i]];
+  }
+  return chars.join("");
+}</code></pre>
+<ul>
+<li><b>crypto.getRandomValues, never Math.random.</b> Math.random is predictable from previous outputs — fine for shuffling a UI, catastrophic for a password.</li>
+<li><b>One character from each set first</b>, so it satisfies every rule <i>by construction</i> rather than by chance.</li>
+<li><b>Then shuffled</b>, so position doesn't leak which set a character came from.</li>
+<li><b>Ambiguous characters removed</b> so it's readable if typed by hand.</li>
+</ul>
+
+<h3>Theming without a flash</h3>
+<pre><code>&lt;!-- in &lt;head>, before the body paints -->
+(function () {
+  var saved = localStorage.getItem("theme");
+  if (saved &amp;&amp; saved !== "system") document.documentElement.setAttribute("data-theme", saved);
+})();</code></pre>
+<pre><code>function applyTheme(mode) {
+  if (mode === "system") document.documentElement.removeAttribute("data-theme");
+  else document.documentElement.setAttribute("data-theme", mode);
+  localStorage.setItem("theme", mode);
+  if (chart) renderChart();     // Chart.js bakes colours in at draw time
+}</code></pre>
+<p>"System" <b>removes</b> the attribute so the <code>prefers-color-scheme</code> media query takes over. The head script runs before first paint, so a light-mode user never sees a flash of dark.</p>
+
+<h3>The Chart.js trap</h3>
+<pre><code>.chart-box { position: relative; height: 260px; width: 100%; }</code></pre>
+<p>With <code>maintainAspectRatio: false</code>, Chart.js sizes the canvas to its parent. If the parent has no height it sizes to the canvas — each resize feeds the next and the chart grows forever. A fixed-height wrapper breaks the loop.</p>`,
   qs:[
-   ["Why can't you just open index.html as a file?","file:// isn't a secure context, so the browser's password manager won't work and OAuth redirects are rejected. Serving it over http://localhost fixes both and removes CORS."],
-   ["Why is the password not in localStorage?","Any JavaScript running on the page can read localStorage — one XSS bug and the password leaks. The OS keychain only releases it to a matching form on a matching origin."],
-   ["Why <code>crypto.getRandomValues</code> over <code>Math.random</code>?","Math.random is predictable from previous outputs. Never use it for anything security-related."]
+   ["Why does the api() wrapper return early on 204?","A 204 has no body, and calling resp.json() on an empty body throws."],
+   ["Why attach err.status to the thrown error?","So callers can branch on it — that's how a 403 at login switches to the OTP screen rather than showing an error."],
+   ["What does Promise.all buy you?","Seven requests fire at once instead of sequentially, so a refresh costs about as long as the slowest one rather than the sum."],
+   ["What would happen without escapeHtml on notes?","A note containing a script tag would execute — cross-site scripting, able to read the token out of localStorage."],
+   ["Why is the password not stored in localStorage?","Any JavaScript on the page can read localStorage. The OS keychain only releases the password to a matching form on a matching origin."],
+   ["Why does the theme script live in <head>?","It must run before the first paint, otherwise a light-mode user sees a flash of the dark theme."]
   ]
 },
 {
-  n:11, title:"Tests, CI/CD and deployment", sub:"the outer layers",
+  n:11, title:"Testing", sub:"conftest.py · pytest · fixtures",
   body:`
-<h3>The test suite</h3>
-<p>pytest with FastAPI's <code>TestClient</code>, running in-process against a throwaway database — no server to start.</p>
-<pre><code>@pytest.fixture
+<p>Manual testing checks what you remember to check, as the user you happen to be logged in as. It never catches "can user B read user A's data?" — because you only ever log in as yourself.</p>
+
+<div class="file">backend/conftest.py</div>
+<pre><code>import os, uuid, pytest
+
+TEST_DB = f"./test_{uuid.uuid4().hex[:8]}.db"
+os.environ["DATABASE_URL"] = os.environ.get("TEST_DATABASE_URL", f"sqlite:///{TEST_DB}")
+os.environ["SECRET_KEY"] = "test-secret-not-used-anywhere-real"
+os.environ.setdefault("SMTP_HOST", "")
+os.environ.setdefault("SMTP_USER", "")
+os.environ.setdefault("SMTP_PASS", "")
+
+from fastapi.testclient import TestClient          # noqa: E402
+from app.databases.database import SessionLocal, engine
+from app.main import app
+from app.models.base import Base
+from app.models.otp import EmailOTP
+
+
+@pytest.fixture(scope="session", autouse=True)
+def _database():
+    Base.metadata.create_all(bind=engine)
+    yield
+    Base.metadata.drop_all(bind=engine)
+    engine.dispose()
+    if os.path.exists(TEST_DB):
+        os.remove(TEST_DB)
+
+
+@pytest.fixture
+def client():
+    return TestClient(app)
+
+
+def read_otp(email: str) -> str:
+    """Reads the code straight from the database - the test equivalent
+    of opening the inbox."""
+    db = SessionLocal()
+    try:
+        otp = db.query(EmailOTP).filter(EmailOTP.email == email).first()
+        return otp.code if otp else None
+    finally:
+        db.close()
+
+
+@pytest.fixture
 def verified_user(client, unique_email):
-    client.post("/register", json={...})
-    resp = client.post("/verify-email", json={"code": read_otp(...)})
-    return {"headers": {"Authorization": f"Bearer {token}"}, ...}</code></pre>
-<p>A <b>fixture</b> is reusable setup. This one registers and verifies an account so tests can start from "logged in".</p>
-<div class="note">The test worth pointing at: <code>test_users_cannot_see_or_touch_each_others_activities</code>. Two accounts, second tries to read/update/delete the first's activity, all three must return 404. Authorisation bugs are the ones that matter and are invisible when you only ever test as yourself.</div>
-<h3>CI — five jobs on every push</h3>
-<table><tr><th>Job</th><th>Why</th></tr>
-<tr><td>Ruff lint</td><td>catches unused imports, undefined names</td></tr>
-<tr><td>pytest on SQLite</td><td>fast feedback</td></tr>
-<tr><td>pytest on PostgreSQL 16</td><td>SQLite alone hides dialect-specific bugs</td></tr>
-<tr><td>Frontend checks</td><td>script syntax, broken icon refs, duplicate IDs, orphaned handlers</td></tr>
-<tr><td>Docker build</td><td>builds the image, starts it, polls /health</td></tr></table>
-<h3>schema_sync.py</h3>
-<p><code>create_all()</code> creates missing <b>tables</b> but never missing <b>columns</b>. Every new field crashed with "column does not exist" until this existed. It applies idempotent additive changes at startup — <code>ADD COLUMN IF NOT EXISTS</code>, and <code>DROP NOT NULL</code>, which is a no-op once already dropped.</p>
-<div class="note">The grown-up answer is <b>Alembic</b>, which does versioned, reversible migrations including destructive ones like renaming or dropping. This only handles the additive case. Knowing the limit matters more than the code.</div>
-<h3>Deployment</h3>
-<p>One Docker image holds API and frontend. <code>render.yaml</code> provisions the web service and PostgreSQL together, generates SECRET_KEY, wires DATABASE_URL in, and auto-deploys on every push to main. The health check gates traffic — a broken build never goes live.</p>
-<h3>The production bug worth telling</h3>
-<p>Gmail SMTP worked locally and failed on Render with <code>[Errno 101] Network is unreachable</code>. Cloud hosts block outbound SMTP as anti-spam. Fix: send over an HTTPS email API instead, since port 443 is never blocked — and make delivery non-fatal, because the account row commits before the email goes out.</p>`,
+    password = "Secret123!"
+    client.post("/register", json={"name": "Test Athlete",
+                                   "email": unique_email, "password": password})
+    resp = client.post("/verify-email", json={"email": unique_email,
+                                              "code": read_otp(unique_email)})
+    token = resp.json()["access_token"]
+    return {"email": unique_email, "password": password, "token": token,
+            "headers": {"Authorization": f"Bearer {token}"}}</code></pre>
+
+<h4>The critical detail: order</h4>
+<p>The environment is configured <b>before</b> importing the app, because <code>database.py</code> reads DATABASE_URL at import time and <code>main.py</code> creates tables on import. Set it afterwards and the tests would hit your real database. That's why the imports below carry <code>noqa: E402</code>.</p>
+<p>Blanking the SMTP variables with <code>setdefault</code> forces console mode, so tests can never send real email even if your <code>.env</code> has working credentials.</p>
+
+<h4>Fixtures</h4>
+<p>A fixture is named, reusable setup a test requests by putting it in its arguments. <code>verified_user</code> registers and verifies an account, so any test using it starts from "logged in" without repeating six lines.</p>
+<p><code>scope="session"</code> on <code>_database</code> means it runs once for the whole run, not per test. <code>autouse=True</code> means every test gets it without asking.</p>
+
+<div class="file">the test that matters most</div>
+<pre><code>def test_users_cannot_see_or_touch_each_others_activities(client, verified_user):
+    owner_h = verified_user["headers"]
+    mine = client.post("/activities", json={...}, headers=owner_h).json()
+
+    other_email = f"other_{uuid.uuid4().hex[:10]}@example.test"
+    client.post("/register", json={"name": "B", "email": other_email, "password": "Secret123!"})
+    token = client.post("/verify-email",
+        json={"email": other_email, "code": read_otp(other_email)}).json()["access_token"]
+    other_h = {"Authorization": f"Bearer {token}"}
+
+    assert all(a["id"] != mine["id"] for a in client.get("/activities", headers=other_h).json())
+    assert client.get(f"/activities/{mine['id']}",    headers=other_h).status_code == 404
+    assert client.put(f"/activities/{mine['id']}",    json={"rpe": 1}, headers=other_h).status_code == 404
+    assert client.delete(f"/activities/{mine['id']}", headers=other_h).status_code == 404
+
+    assert client.get(f"/activities/{mine['id']}", headers=owner_h).json()["rpe"] == 6</code></pre>
+<div class="note">The second email is generated <b>inside the test</b> rather than taken from the <code>unique_email</code> fixture — because <code>verified_user</code> already consumed it, so both users would have received the same address and the second registration would 409. Caught by review before it ever ran.</div>
+<p>The last line matters as much as the 404s: it proves the failed attempts didn't damage the original.</p>
+
+<h4>Other things worth testing that you do</h4>
+<table><tr><th>Test</th><th>Proves</th></tr>
+<tr><td>test_weak_passwords_are_rejected</td><td>six different failure modes, one per rule</td></tr>
+<tr><td>test_login_ignores_the_strength_rules</td><td>401 not 422 — rules don't leak at login</td></tr>
+<tr><td>test_otp_is_single_use</td><td>a used code can't be replayed</td></tr>
+<tr><td>test_switching_to_a_duration_sport_clears_distance</td><td>the cross-field rule survives an edit</td></tr>
+<tr><td>test_old_sessions_are_ignored</td><td>the 90-day threshold window works</td></tr></table>`,
   qs:[
-   ["Why run the tests on both SQLite and PostgreSQL?","SQLite is fast for feedback but behaves differently. Production is Postgres, so dialect-specific bugs would otherwise only appear after deploying."],
-   ["Why doesn't <code>create_all()</code> handle schema changes?","It only creates missing tables. Adding a column to an existing table does nothing, so the app crashes with 'column does not exist'."],
-   ["What's the limit of schema_sync.py?","It only does additive changes. Renaming or dropping a column needs versioned migrations — Alembic."],
-   ["Why did email work locally but not on Render?","Cloud hosts block outbound SMTP ports to prevent spam. Switching to an HTTPS email API fixed it, since 443 is never blocked."]
+   ["Why must DATABASE_URL be set before importing the app?","database.py reads it at import time. Set it afterwards and the app has already connected — to your real database."],
+   ["What is a fixture?","Named reusable setup a test requests by naming it in its arguments. verified_user gives you a registered, verified, logged-in account."],
+   ["Which test would you show an interviewer first?","The cross-user isolation one — read, update and delete all return 404, and the owner's record is proven untouched afterwards."],
+   ["Why blank the SMTP env vars in conftest?","So tests can never send real email, even if your local .env has working credentials."]
+  ]
+},
+{
+  n:12, title:"Git and GitHub", sub:"commits · staging · .gitignore",
+  body:`
+<h3>Git vs GitHub</h3>
+<p><b>Git</b> is a program on your computer that records snapshots of your files. <b>GitHub</b> is a website that stores a copy. Git works offline; GitHub is where you publish.</p>
+
+<h3>The three places a change can be</h3>
+<table><tr><th>Place</th><th>Meaning</th></tr>
+<tr><td>working tree</td><td>your actual files, as you edit them</td></tr>
+<tr><td>staging area</td><td>changes marked for the next snapshot</td></tr>
+<tr><td>repository</td><td>the snapshots themselves</td></tr></table>
+<pre><code>git add -A              # working tree → staging
+git commit -m "..."     # staging      → repository
+git push                # repository   → GitHub</code></pre>
+<p>Staging exists so you can commit <i>some</i> changes and not others, keeping each commit about one thing. <code>-A</code> means all changes.</p>
+
+<h3>A commit</h3>
+<p>A snapshot, a message, an author, a timestamp, and a link to the commit before it. That chain is the history. Each gets a hash like <code>2fda9e7</code> — its permanent name.</p>
+<pre><code>git status              # what's changed, what's staged
+git log --oneline -3    # last three commits
+git diff                # what changed, line by line</code></pre>
+<div class="note"><b>"Your branch is ahead of origin/main by 1 commit"</b> means you committed but didn't push. It happened to you: the objects uploaded but the branch pointer never moved, so Render never saw the change. A commit is local until you push.</div>
+
+<div class="file">.gitignore</div>
+<pre><code># Secrets - never commit
+backend/.env
+
+# Test artefacts
+backend/test_*.db
+.pytest_cache/
+.ruff_cache/
+
+# Python
+__pycache__/
+*.pyc
+backend/venv/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/</code></pre>
+<p>Two rules:</p>
+<ul>
+<li><b>Never commit secrets.</b> Your <code>.env</code> holds a Gmail app password and a Brevo API key. The repo is public — this one line stands between you and leaking them.</li>
+<li><b>Never commit generated things.</b> <code>venv/</code> is hundreds of megabytes and fully rebuildable from <code>requirements.txt</code>. <code>__pycache__</code> is regenerated on every run.</li>
+</ul>
+<p>The mirror of this is that anything <i>not</i> generated must be committed — which is why <code>requirements.txt</code> exists. It's the recipe that lets anyone rebuild the thing you didn't commit.</p>
+
+<h3>Things that bit you</h3>
+<p><b>"LF will be replaced by CRLF"</b> — Windows ends lines with two characters, Linux with one. Git converts on the way in and out so the same file works on both. A warning, not an error.</p>
+<p><b>"Deletion of directory .git/objects/06 failed"</b> — OneDrive holds file handles open while syncing, so git can't delete its own temporary files. Cosmetic. The real fix is keeping repos outside OneDrive; GitHub is already your backup, so cloud-syncing a repo adds nothing but conflicts.</p>
+<p><b>Application Control blocking pip.exe</b> — run <code>python -m pip</code> instead. That never launches the blocked executable; it runs the module inside the already-allowed <code>python.exe</code>.</p>
+
+<h3>The chain to keep in your head</h3>
+<pre><code>editor → local server   (instant, on save)
+       → GitHub          (only after git push)
+       → Render          (only after GitHub, ~3 min)</code></pre>
+<p>Test locally first — it's free and instant. Push when you're happy; every push costs a CI run and a deploy.</p>`,
+  qs:[
+   ["Difference between git and GitHub?","Git is the program recording snapshots on your machine. GitHub is a website hosting a copy so others — and Render — can see it."],
+   ["Why does staging exist?","So you can commit some changes and not others, keeping each commit focused on one thing."],
+   ["Why is venv/ ignored but requirements.txt committed?","venv is generated and huge; requirements.txt is the recipe to rebuild it. Commit recipes, not outputs."],
+   ["You committed but the live site is unchanged. Why?","A commit is local. Until you push, GitHub doesn't have it — and Render only ever sees GitHub."]
+  ]
+},
+{
+  n:13, title:"Continuous integration", sub:"ci.yml — five jobs",
+  body:`
+<h3>What CI means</h3>
+<p>Every push, a fresh machine checks out your code and runs your checks. Fail and you get a red X before the code reaches anyone.</p>
+<p>The point isn't that you couldn't run the tests yourself — it's that <b>you can't forget</b>, and it runs on a clean machine, so "works on my laptop" stops being a defence.</p>
+
+<h3>Vocabulary</h3>
+<table><tr><th>Word</th><th>Means</th></tr>
+<tr><td>workflow</td><td>one YAML file describing what to run</td></tr>
+<tr><td>trigger</td><td>what starts it</td></tr>
+<tr><td>job</td><td>an independent task on its own fresh machine</td></tr>
+<tr><td>step</td><td>one command inside a job</td></tr>
+<tr><td>action</td><td>a reusable step someone published</td></tr>
+<tr><td>runner</td><td>the throwaway machine it runs on</td></tr></table>
+
+<div class="file">.github/workflows/ci.yml — trigger</div>
+<pre><code>name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:          # adds a manual "Run" button
+
+concurrency:
+  group: \${{ github.workflow }}-\${{ github.ref }}
+  cancel-in-progress: true</code></pre>
+<p><code>concurrency</code> cancels an in-flight run when you push again to the same branch — no point testing code that's already been replaced. Saves minutes and money.</p>
+
+<div class="file">a job</div>
+<pre><code>test:
+  name: Tests (SQLite)
+  runs-on: ubuntu-latest
+  steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: "3.11"
+        cache: pip
+    - name: Install dependencies
+      working-directory: backend
+      run: pip install -r requirements-dev.txt
+    - name: Run test suite
+      working-directory: backend
+      run: pytest -v</code></pre>
+<ul>
+<li><code>uses:</code> runs a published action; <code>run:</code> runs a shell command.</li>
+<li><b>checkout is always first</b> — the runner starts completely empty and doesn't have your code until you ask for it.</li>
+<li><code>cache: pip</code> reuses downloaded packages between runs, cutting install time.</li>
+<li><code>@v4</code> pins the action's major version, so it can't change under you without warning.</li>
+</ul>
+<p>All five jobs start <b>at the same time</b> on separate machines, which is why the whole run finishes in about 90 seconds.</p>
+
+<div class="file">the Postgres job — service containers</div>
+<pre><code>test-postgres:
+  runs-on: ubuntu-latest
+  services:
+    postgres:
+      image: postgres:16
+      env:
+        POSTGRES_USER: postgres
+        POSTGRES_PASSWORD: postgres
+        POSTGRES_DB: endurancehub_test
+      ports: ["5432:5432"]
+      options: >-
+        --health-cmd pg_isready
+        --health-interval 10s
+        --health-timeout 5s
+        --health-retries 5
+  steps:
+    ...
+    - name: Run test suite
+      env:
+        TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/endurancehub_test
+      run: pytest -v</code></pre>
+<p>A real PostgreSQL container started alongside the job. The <b>health options make the job wait</b> until it accepts connections — without them the tests would sometimes start too early and fail at random, which is the worst kind of test failure.</p>
+<p><code>TEST_DATABASE_URL</code> is the hook <code>conftest.py</code> reads, which is why the same suite can run on either database with no code change.</p>
+
+<div class="file">the frontend job</div>
+<pre><code>- name: Syntax-check the app script
+  run: |
+    python3 - &lt;&lt;'PY'
+    import re, pathlib
+    html = pathlib.Path("frontend/index.html").read_text(encoding="utf-8")
+    script = max(re.findall(r"&lt;script>(.*?)&lt;/script>", html, re.S), key=len)
+    pathlib.Path("/tmp/app.js").write_text(script)
+    PY
+    node --check /tmp/app.js</code></pre>
+<p>Extracts the largest script block and syntax-checks it with Node. Two more steps verify every icon reference resolves to a defined symbol, and that there are no duplicate element IDs or inline handlers pointing at functions that don't exist.</p>
+<div class="note">This job caught a real bug: adding a second <code>&lt;script></code> (the pre-paint theme setter) broke a regex that assumed one block. Hence <code>max(..., key=len)</code> — take the largest, which is the app.</div>
+
+<div class="file">the Docker job</div>
+<pre><code>- run: docker build -t endurancehub:ci .
+- name: Container starts and serves /health
+  run: |
+    docker run -d --name eh -p 8000:8000 \\
+      -e DATABASE_URL=sqlite:///./ci.db -e SECRET_KEY=ci-secret endurancehub:ci
+    for i in $(seq 1 20); do
+      if curl -fs http://localhost:8000/health; then echo " - healthy"; exit 0; fi
+      sleep 2
+    done
+    echo "container never became healthy"; docker logs eh; exit 1</code></pre>
+<p>Building isn't enough — an image can build and still fail to start. This runs it and polls <code>/health</code> up to 20 times, printing the container logs if it never answers.</p>
+
+<h3>The five jobs</h3>
+<table><tr><th>Job</th><th>Catches</th></tr>
+<tr><td>Lint (ruff)</td><td>unused imports, undefined names</td></tr>
+<tr><td>Tests (SQLite)</td><td>logic bugs, fast feedback</td></tr>
+<tr><td>Tests (PostgreSQL 16)</td><td>dialect-specific bugs SQLite hides</td></tr>
+<tr><td>Frontend checks</td><td>syntax, broken icon refs, duplicate IDs, orphaned handlers</td></tr>
+<tr><td>Docker</td><td>image builds, container starts, /health answers</td></tr></table>`,
+  qs:[
+   ["Why run the tests on both SQLite and PostgreSQL?","SQLite is fast for feedback but behaves differently. Production is Postgres, so dialect bugs would otherwise surface only after deploying."],
+   ["Why does every job begin with checkout?","Each job gets a fresh, empty machine. It has no idea what your repo is until checkout copies it there."],
+   ["What do the health-cmd options on the postgres service do?","Make the job wait until the database accepts connections. Without them tests start too early and fail at random."],
+   ["Why isn't 'docker build succeeded' enough?","An image can build and still crash on startup. The job runs it and polls /health before passing."],
+   ["What is concurrency: cancel-in-progress for?","Push twice quickly and the first run is cancelled — no point testing code that's already replaced."]
+  ]
+},
+{
+  n:14, title:"Docker and deployment", sub:"Dockerfile · render.yaml · schema_sync.py",
+  body:`
+<h3>The problem containers solve</h3>
+<p>Your app needs Python 3.11, specific libraries, and a particular layout. A server has none of that. A <b>container</b> packages the OS, runtime, dependencies and your code into one image that runs identically anywhere.</p>
+
+<div class="file">Dockerfile — the whole file</div>
+<pre><code>FROM python:3.11-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1 \\
+    PYTHONUNBUFFERED=1
+
+WORKDIR /app
+
+# Dependencies first: this layer is cached until requirements.txt changes,
+# so code edits rebuild in seconds rather than reinstalling everything.
+COPY backend/requirements.txt backend/requirements.txt
+RUN pip install --no-cache-dir -r backend/requirements.txt
+
+COPY backend/ backend/
+COPY frontend/ frontend/
+
+WORKDIR /app/backend
+EXPOSE 8000
+
+CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port \${PORT:-8000}"]</code></pre>
+<table><tr><th>Line</th><th>Why</th></tr>
+<tr><td>FROM python:3.11-slim</td><td>start from an image with Python already installed; "slim" drops what you don't need</td></tr>
+<tr><td>PYTHONDONTWRITEBYTECODE</td><td>skip .pyc files — pointless in a throwaway container</td></tr>
+<tr><td>PYTHONUNBUFFERED</td><td>print immediately, so logs appear live instead of being held in a buffer</td></tr>
+<tr><td>COPY requirements first</td><td>layer caching — see below</td></tr>
+<tr><td>--no-cache-dir</td><td>don't keep pip's download cache in the image</td></tr>
+<tr><td>0.0.0.0</td><td>listen on all interfaces; localhost would be unreachable from outside</td></tr>
+<tr><td>\${PORT:-8000}</td><td>the host assigns a port at runtime; shell form is needed to expand it</td></tr></table>
+<div class="note"><b>Layer caching.</b> Each line creates a layer, and Docker reuses layers whose inputs haven't changed. Copying <code>requirements.txt</code> and installing <i>before</i> copying your code means editing a Python file doesn't reinstall FastAPI. Copy everything first and every build reinstalls from scratch — minutes instead of seconds.</div>
+<p><code>parents[2]</code> in main.py resolves to <code>/app</code> inside the container, so <code>/app/frontend</code> is found exactly as it is locally. That's why the same path code works in both places.</p>
+
+<div class="file">.dockerignore</div>
+<pre><code>**/venv/
+**/__pycache__/
+**/*.pyc
+**/.env
+**/test_*.db
+.git/
+.github/
+docs/
+*.md</code></pre>
+<p>Keeps the image small and, critically, keeps <code>.env</code> out of it. A secret baked into an image travels wherever the image goes.</p>
+
+<div class="file">render.yaml — infrastructure as code</div>
+<pre><code>services:
+  - type: web
+    name: endurancehub
+    runtime: docker
+    plan: free
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DATABASE_URL
+        fromDatabase:
+          name: endurancehub-db
+          property: connectionString
+      - key: BREVO_API_KEY
+        sync: false
+      - key: MAIL_FROM
+        sync: false
+
+databases:
+  - name: endurancehub-db
+    plan: free
+    databaseName: endurancehub
+    user: endurancehub</code></pre>
+<table><tr><th>Setting</th><th>Meaning</th></tr>
+<tr><td>generateValue: true</td><td>Render invents a random secret — production never uses the dev default</td></tr>
+<tr><td>fromDatabase</td><td>wires the database address in automatically, no copy-paste</td></tr>
+<tr><td>sync: false</td><td>"this variable exists, ask me in the dashboard" — secrets stay out of the repo</td></tr>
+<tr><td>healthCheckPath</td><td>traffic only switches once /health answers</td></tr>
+<tr><td>autoDeploy: true</td><td>every push to main redeploys</td></tr></table>
+<p>The whole file is <b>infrastructure as code</b>: the servers and database are described in a file in the repo, versioned alongside the app, rather than clicked together in a dashboard nobody can reproduce.</p>
+
+<h3>What CD actually is</h3>
+<pre><code>git push
+  → GitHub stores the commit
+  → CI runs five jobs
+  → Render sees the new commit, builds the image
+  → starts a container, polls /health
+  → healthy?     switch traffic to it
+  → not healthy? keep the old one running</code></pre>
+<p>That last line is the point: a broken build never becomes the live site.</p>
+
+<div class="file">backend/app/databases/schema_sync.py</div>
+<pre><code>MIGRATIONS = [
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS is_verified BOOLEAN NOT NULL DEFAULT FALSE",
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS delete_requested_at TIMESTAMP NULL",
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS birth_year INTEGER NULL",
+    ...
+    "ALTER TABLE activities ALTER COLUMN distance_km DROP NOT NULL",
+]
+
+
+def sync_schema(engine) -> int:
+    if engine.dialect.name != "postgresql":
+        return 0                      # SQLite tests get a fresh DB anyway
+
+    applied = 0
+    for sql in MIGRATIONS:
+        try:
+            with engine.begin() as conn:
+                conn.execute(text(sql))
+            applied += 1
+        except Exception as exc:
+            logging.warning("Schema sync skipped: %s (%s)", sql, exc)
+    return applied</code></pre>
+<p><code>create_all()</code> creates missing <b>tables</b> but never missing <b>columns</b>. Every new field crashed with "column does not exist" until this existed — three separate times.</p>
+<ul>
+<li><b>Idempotent</b> — <code>ADD COLUMN IF NOT EXISTS</code> does nothing on the second run, and <code>DROP NOT NULL</code> is a no-op once already dropped. Safe on every boot.</li>
+<li><b>Each in its own transaction</b> (<code>engine.begin()</code> per statement) so one failure can't roll back the rest.</li>
+<li><b>Failures are logged, not raised</b> — a single unsupported statement shouldn't stop the app booting.</li>
+</ul>
+<div class="note">The grown-up answer is <b>Alembic</b> — versioned, reversible migrations including destructive ones like renaming or dropping a column. This only handles the additive case. Knowing the limit matters more than the code.</div>
+
+<div class="file">backend/app/env_loader.py — the whole file</div>
+<pre><code>def load_env():
+    env_file = Path(__file__).resolve().parents[1] / ".env"
+    if not env_file.exists():
+        return
+    for line in env_file.read_text().splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, _, value = line.partition("=")
+        os.environ.setdefault(key.strip(), value.strip())</code></pre>
+<p><code>setdefault</code>, not assignment — so a real environment variable always beats the file. That's exactly why the same code uses your local database on your laptop and Render's in production, and why <code>conftest.py</code> can force a test database by setting it first.</p>
+<p>No external library needed; it's twelve lines.</p>
+
+<h3>The production bug worth telling in an interview</h3>
+<p>Gmail SMTP worked perfectly on localhost and failed on Render with <code>[Errno 101] Network is unreachable</code>. Cloud hosts block outbound SMTP ports as an anti-spam measure. Diagnosed from the logs, fixed by sending over an HTTPS email API instead — port 443 is never blocked — and by making delivery non-fatal, because the account row commits before the email goes out.</p>`,
+  qs:[
+   ["Why copy requirements.txt before your code?","Layer caching. Dependencies rarely change, code changes constantly — this way editing a Python file doesn't reinstall every library."],
+   ["Why 0.0.0.0 instead of localhost inside a container?","localhost means the container itself, so nothing outside could reach it. 0.0.0.0 listens on all interfaces."],
+   ["What does the health check gate protect against?","A broken build going live. Traffic only switches once the new container answers /health; otherwise the old one keeps serving."],
+   ["What does sync: false mean in render.yaml?","The variable is declared but its value is entered in the dashboard, so secrets never live in the repository."],
+   ["Why setdefault rather than assignment in env_loader?","So a real environment variable always wins over the file — which is how the same code runs locally and in production unchanged."],
+   ["What's the limit of schema_sync.py?","Additive changes only. Renaming or dropping a column needs versioned migrations — Alembic."]
   ]
 }];
 
@@ -558,7 +1730,7 @@ root.innerHTML = PARTS.map(p => `
     <div class="part-body">
       ${p.body}
       <h3>Test yourself</h3>
-      ${p.qs.map((q, i) => `
+      ${p.qs.map(q => `
         <div class="q" onclick="this.classList.toggle('show')">
           <div class="qt">${q[0]}</div>
           <div class="qa">${q[1]}</div>
@@ -594,11 +1766,10 @@ updateBar();
 function cycleTheme() {
   const order = ["system", "light", "dark"];
   const now = localStorage.getItem("theme") || "system";
-  const next = order[(order.indexOf(now) + 1) % 3];
-  localStorage.setItem("theme", next);
-  applyTheme(next);
+  applyTheme(order[(order.indexOf(now) + 1) % 3]);
 }
 function applyTheme(mode) {
+  localStorage.setItem("theme", mode);
   if (mode === "system") document.documentElement.removeAttribute("data-theme");
   else document.documentElement.setAttribute("data-theme", mode);
   document.getElementById("theme-btn").textContent =
