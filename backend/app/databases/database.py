@@ -21,7 +21,15 @@ if DATABASE_URL.startswith("postgres://"):
 connect_args = {"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {}
 
 # One engine per application: it owns a pool of reusable DB connections.
-engine = create_engine(DATABASE_URL, connect_args=connect_args)
+# pool_pre_ping tests a connection before handing it out - serverless
+# Postgres (Neon) sleeps when idle and silently drops pooled connections,
+# so without this the first request after a quiet spell would fail.
+engine = create_engine(
+    DATABASE_URL,
+    connect_args=connect_args,
+    pool_pre_ping=True,
+    pool_recycle=300,
+)
 
 # Factory that produces one short-lived Session ("cart") per request.
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

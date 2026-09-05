@@ -1,6 +1,6 @@
 # Deployment
 
-**Live:** https://endurancehub-dyq3.onrender.com (Render, Oregon — web service + PostgreSQL 18)
+**Live:** https://endurancehub-dyq3.onrender.com (Render web service, Neon PostgreSQL)
 
 The app ships as a single Docker image serving both the API and the frontend, so there's one service to deploy rather than two.
 
@@ -27,12 +27,24 @@ pytest -v
 
 ## Deploying to Render
 
-Render is the least fiddly option: it reads `render.yaml` and provisions the web service and Postgres together.
+Render hosts the container; the database lives on Neon. Render's free Postgres expires after 30 days, whereas Neon's free plan is permanent and wakes from idle on the next connection — the right shape for a project that sits quiet between visits.
+
+**1. Create the database (Neon)**
+
+1. Sign up at [neon.com](https://neon.com) and create a project.
+2. Copy the pooled connection string. It looks like
+   `postgresql://user:pass@ep-xxx-pooler.region.aws.neon.tech/neondb?sslmode=require`
+3. Keep the `?sslmode=require` suffix — Neon refuses unencrypted connections.
+
+**2. Deploy the app (Render)**
 
 1. Push the repository to GitHub.
 2. In Render, choose **New → Blueprint** and select the repo.
-3. Render reads `render.yaml`, creates `endurancehub` (web) and `endurancehub-db` (Postgres), generates a `SECRET_KEY` and wires `DATABASE_URL` in automatically.
-4. Click **Apply**. First build takes a few minutes.
+3. Render reads `render.yaml`, creates the `endurancehub` web service and generates a `SECRET_KEY`.
+4. Set **`DATABASE_URL`** in the dashboard to the Neon string (it is marked `sync: false`, so it is never committed).
+5. Click **Apply**. First build takes a few minutes.
+
+On first boot the app runs `create_all()` then `sync_schema()`, so an empty Neon database builds its own tables — no migration step.
 
 Every push to `main` redeploys automatically (`autoDeploy: true`), and Render waits for `/health` before switching traffic to the new version.
 
@@ -53,7 +65,9 @@ Delivery never raises. The account row is committed before the email goes out, s
 
 ### Free-tier caveats
 
-Free web services sleep after inactivity, so the first request after a quiet period takes 30–60 seconds. Free Postgres instances expire after a limited period — check Render's current terms, and upgrade the database if the deployment needs to outlive it.
+Free web services on Render sleep after inactivity, so the first request after a quiet period takes 30–60 seconds while the container cold-starts. Neon adds a much shorter wake-up of its own — the engine is configured with `pool_pre_ping=True` so a connection dropped during that sleep is discarded and reopened rather than raising.
+
+Render's own free Postgres expires 30 days after creation, which is why the database moved to Neon. If you ever move it back, budget for the upgrade.
 
 ## Other hosts
 
