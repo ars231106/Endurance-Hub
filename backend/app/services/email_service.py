@@ -49,13 +49,20 @@ def _log_fallback(to_email: str, content: str, reason: str):
 
 
 def _post_json(url: str, payload: dict, headers: dict) -> None:
+    # urlopen will happily follow file:// and custom schemes, which turns a
+    # tainted URL into local file disclosure. These URLs are constants in
+    # this module, but the check is cheap and keeps that true if they ever
+    # become configurable.
+    if not url.startswith("https://"):
+        raise ValueError(f"refusing non-HTTPS mail endpoint: {url!r}")
+
     req = urllib.request.Request(
         url,
         data=json.dumps(payload).encode(),
         headers={"Content-Type": "application/json", **headers},
         method="POST",
     )
-    with urllib.request.urlopen(req, timeout=15) as resp:
+    with urllib.request.urlopen(req, timeout=15) as resp:  # nosec B310 - scheme checked above
         if resp.status >= 300:
             raise RuntimeError(f"HTTP {resp.status}")
 
