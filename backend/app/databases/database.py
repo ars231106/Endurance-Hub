@@ -3,13 +3,9 @@ from sqlalchemy.orm import sessionmaker
 
 from app.config import settings
 
+# Already normalised by app.config: the scheme and the DBAPI driver are
+# pinned there so every consumer sees the same URL.
 DATABASE_URL = settings.database_url
-
-# Several hosts (Render, Heroku) hand out URLs starting with "postgres://",
-# a scheme SQLAlchemy 2 no longer recognises. Normalising it here avoids a
-# deploy that fails on startup with an obscure dialect error.
-if DATABASE_URL.startswith("postgres://"):
-    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
 _is_sqlite = DATABASE_URL.startswith("sqlite")
 

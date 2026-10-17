@@ -1,4 +1,5 @@
 """Analytics: summary, weekly buckets, records, streaks, load and thresholds."""
+import uuid
 from datetime import date, timedelta
 
 import pytest
@@ -161,7 +162,7 @@ class TestSqlAggregationCorrectness:
         assert s["avg_pace_min_per_km"] == 5.0         # 50 min / 10 km only
         assert s["avg_rpe"] == 4.0                     # (6 + 2) / 2
 
-    def test_aggregates_are_scoped_to_one_user(self, client, verified_user, unique_email):
+    def test_aggregates_are_scoped_to_one_user(self, client, verified_user):
         """The single most dangerous bug a cached, grouped query can have."""
         mine = verified_user["headers"]
         client.post("/activities", json={
@@ -169,10 +170,17 @@ class TestSqlAggregationCorrectness:
         }, headers=mine)
 
         from conftest import read_otp
-        password = "Other123!"
-        client.post("/register", json={"name": "Other", "email": unique_email, "password": password})
+
+        # A fresh address generated here, NOT the `unique_email` fixture:
+        # verified_user already consumed that one, and a fixture returns the
+        # same value to every consumer within a test - so both users would
+        # share an email and the second registration would 409.
+        other_email = f"other_{uuid.uuid4().hex[:10]}@example.test"
+        client.post("/register", json={
+            "name": "Other", "email": other_email, "password": "Other123!",
+        })
         token = client.post(
-            "/verify-email", json={"email": unique_email, "code": read_otp(unique_email)}
+            "/verify-email", json={"email": other_email, "code": read_otp(other_email)}
         ).json()["access_token"]
         theirs = {"Authorization": f"Bearer {token}"}
 

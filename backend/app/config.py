@@ -44,6 +44,26 @@ class ConfigError(RuntimeError):
     """Raised at import time when the configuration is unusable."""
 
 
+def normalize_database_url(url: str) -> str:
+    """Pins the scheme and the driver.
+
+    Two separate problems, both of which surface only at startup:
+
+    1. Render and Heroku hand out "postgres://", a scheme SQLAlchemy 2
+       stopped recognising.
+    2. SQLAlchemy 2.1 changed the default driver for a bare "postgresql://"
+       URL from psycopg2 to psycopg (v3). We install psycopg2-binary, so a
+       bare URL started failing with ModuleNotFoundError the moment that
+       release landed. Naming the driver explicitly means the installed
+       version's default no longer decides which DBAPI gets imported.
+    """
+    if url.startswith("postgres://"):
+        url = url.replace("postgres://", "postgresql://", 1)
+    if url.startswith("postgresql://"):
+        url = url.replace("postgresql://", "postgresql+psycopg2://", 1)
+    return url
+
+
 @dataclass(frozen=True)
 class Settings:
     # --- environment -----------------------------------------------------
@@ -107,14 +127,18 @@ class Settings:
                     "SECRET_KEY must be set to a unique value of at least 32 characters "
                     "in production. Tokens signed with the default key can be forged."
                 )
-            if self.database_url.startswith("postgresql://postgres:"):
-                raise ConfigError("DATABASE_URL still points at the local development database.")
+            if "@localhost" in self.database_url or "@127.0.0.1" in self.database_url:
+                raise ConfigError("DATABASE_URL still points at a local development database.")
         if self.access_token_minutes < 1:
             raise ConfigError("ACCESS_TOKEN_MINUTES must be at least 1.")
 
 
 def _build() -> Settings:
     s = Settings()
+    # Normalised once, here, so every consumer - the engine, Alembic's env,
+    # the migration runner - gets the identical URL. Frozen dataclass, so
+    # the write goes through object.__setattr__.
+    object.__setattr__(s, "database_url", normalize_database_url(s.database_url))
     s._validate()
     return s
 

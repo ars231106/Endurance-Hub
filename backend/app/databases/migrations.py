@@ -37,10 +37,9 @@ def _config():
 
     cfg = Config(str(ALEMBIC_INI))
     cfg.set_main_option("script_location", str(BACKEND_DIR / "alembic"))
-    url = settings.database_url
-    if url.startswith("postgres://"):
-        url = url.replace("postgres://", "postgresql://", 1)
-    cfg.set_main_option("sqlalchemy.url", url)
+    # Escaped: ConfigParser reads a bare % as interpolation syntax, and a
+    # URL-encoded password can contain one.
+    cfg.set_main_option("sqlalchemy.url", settings.database_url.replace("%", "%%"))
     return cfg
 
 

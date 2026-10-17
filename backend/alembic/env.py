@@ -21,10 +21,12 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
+# Normalised in app.config, so Alembic and the application engine can
+# never end up pointing at different databases or different drivers.
 url = settings.database_url
-if url.startswith("postgres://"):
-    url = url.replace("postgres://", "postgresql://", 1)
-config.set_main_option("sqlalchemy.url", url)
+# Escaped because ConfigParser treats a bare % as interpolation syntax,
+# and a URL-encoded password can legitimately contain one.
+config.set_main_option("sqlalchemy.url", url.replace("%", "%%"))
 
 # Lets `alembic revision --autogenerate` diff the models against the
 # database and write most of a migration for you.

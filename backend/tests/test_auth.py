@@ -3,7 +3,11 @@ from conftest import read_otp
 
 
 def test_health(client):
-    assert client.get("/health").json() == {"status": "healthy"}
+    # Liveness only. Asserted field-by-field rather than as a whole dict, so
+    # adding a field to the payload isn't a breaking change for this test.
+    body = client.get("/health").json()
+    assert body["status"] == "healthy"
+    assert "version" in body
 
 
 def test_register_creates_unverified_account(client, unique_email):
