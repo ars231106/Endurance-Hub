@@ -9,6 +9,25 @@ DATABASE_URL = settings.database_url
 
 _is_sqlite = DATABASE_URL.startswith("sqlite")
 
+
+def _connect_args(url: str) -> dict:
+    """libpq connection options.
+
+    statement_timeout kills runaway queries so one of them cannot hold a
+    connection and starve the pool. It is sent as a libpq *startup*
+    parameter - and PgBouncer-style poolers reject those outright:
+
+        ERROR: unsupported startup parameter in options: statement_timeout
+
+    Neon's pooled endpoint (the "-pooler" host) is exactly that, so the
+    option is only sent on a direct connection. Plain Postgres accepts it,
+    which is why CI never saw this - the failure needs a real pooler.
+    """
+    args = {"connect_timeout": 10}
+    if "-pooler." not in url:
+        args["options"] = "-c statement_timeout=15000"
+    return args
+
 # SQLite (used in automated tests) is single-threaded by default and has no
 # connection pool to size.
 if _is_sqlite:
@@ -27,12 +46,7 @@ else:
         # Fail fast rather than queueing forever when the pool is drained -
         # a request that waits 30s has already failed from the user's view.
         "pool_timeout": 10,
-        "connect_args": {
-            # Kill queries that run away instead of letting them hold a
-            # connection and starve everything else.
-            "options": "-c statement_timeout=15000",
-            "connect_timeout": 10,
-        },
+        "connect_args": _connect_args(DATABASE_URL),
     }
 
 # One engine per application: it owns the pool of reusable DB connections.
