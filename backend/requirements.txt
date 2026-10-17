@@ -1,5 +1,8 @@
 fastapi
 uvicorn[standard]
+# Production process manager: gunicorn supervises several uvicorn workers
+# and restarts any that die. uvicorn alone runs a single process.
+gunicorn
 sqlalchemy
 psycopg2-binary
 pydantic
@@ -8,3 +11,11 @@ passlib
 # 4.1, so anything newer breaks password hashing at runtime.
 bcrypt==4.0.1
 python-jose
+# Schema migrations. Replaces the additive-only schema_sync, which could
+# add columns but never rename, drop or backfill.
+alembic
+# Rate limiting, token revocation and the analytics cache. Optional at
+# runtime - the app degrades rather than failing when Redis is absent.
+redis
+# Error reporting. Also optional; only initialised when SENTRY_DSN is set.
+sentry-sdk

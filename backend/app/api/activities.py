@@ -1,15 +1,17 @@
 from datetime import date as date_type
 from typing import List
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
+from app.api.analytics import invalidate_user_cache
 from app.constants import DISTANCE_TYPES
 from app.databases.database import get_db
 from app.dependencies import get_current_user
 from app.models.activity import Activity
 from app.models.user import User
 from app.schemas.activity_schemas import ActivityCreate, ActivityOut, ActivityUpdate
+from app.services import rate_limit
 
 router = APIRouter(prefix="/activities", tags=["activities"])
 
@@ -33,9 +35,12 @@ def get_owned_activity(activity_id: int, db: Session, user: User) -> Activity:
 @router.post("", response_model=ActivityOut, status_code=status.HTTP_201_CREATED)
 def create_activity(
     payload: ActivityCreate,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    rate_limit.enforce(request, "write", current_user.email)
+
     # user_id comes from the verified token, never from the request body -
     # clients cannot log activities as someone else.
     activity = Activity(
@@ -51,6 +56,8 @@ def create_activity(
     db.add(activity)
     db.commit()
     db.refresh(activity)
+    # Every cached analytics response for this user is now stale.
+    invalidate_user_cache(current_user.id)
     return activity
 
 
@@ -109,6 +116,7 @@ def update_activity(
 
     db.commit()
     db.refresh(activity)
+    invalidate_user_cache(current_user.id)
     return activity
 
 
@@ -121,4 +129,5 @@ def delete_activity(
     activity = get_owned_activity(activity_id, db, current_user)
     db.delete(activity)
     db.commit()
+    invalidate_user_cache(current_user.id)
     # 204 No Content: success with an intentionally empty response body.

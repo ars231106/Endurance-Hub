@@ -1180,7 +1180,44 @@
         </label>
         <button class="btn" id="auth-btn" type="submit">Log in</button>
       </form>
+      <div class="resend-line" id="forgot-line">Forgotten your password? <button type="button" onclick="showForgotStep()">Reset it</button></div>
       <div class="error-msg" id="auth-error"></div>
+    </div>
+
+    <!-- Step 1 of reset: ask for the address. The response is identical
+         whether or not the account exists, so this screen never reveals
+         who is registered. -->
+    <div id="forgot-step" class="hidden">
+      <p style="margin-top:18px; font-size:15px; font-weight:600">Reset your password</p>
+      <p style="color:var(--muted); font-size:13px; margin-top:6px">We'll email you a link. It works once and expires in 30 minutes.</p>
+      <label for="forgot-email">Email</label>
+      <input id="forgot-email" type="email" autocomplete="username" placeholder="you@example.com">
+      <button class="btn" onclick="submitForgot()">Send reset link</button>
+      <div class="resend-line"><button type="button" onclick="showCredStep()">Back to log in</button></div>
+      <div class="error-msg" id="forgot-error"></div>
+      <div class="info-msg" id="forgot-info"></div>
+    </div>
+
+    <!-- Step 2: reached by clicking the emailed link, which carries the
+         token in the query string. -->
+    <div id="reset-step" class="hidden">
+      <p style="margin-top:18px; font-size:15px; font-weight:600">Choose a new password</p>
+      <form onsubmit="event.preventDefault(); submitReset();" autocomplete="on">
+        <div class="pw-head">
+          <label for="reset-password">New password</label>
+          <button type="button" class="pw-suggest" onclick="suggestResetPassword()">Suggest a strong one</button>
+        </div>
+        <div class="pw-wrap">
+          <input id="reset-password" name="password" type="password" autocomplete="new-password"
+                 placeholder="new password" oninput="renderResetRules()">
+          <button type="button" class="pw-eye" aria-label="Show password" onclick="toggleResetPassword()">
+            <svg class="ic"><use href="#i-eye"/></svg>
+          </button>
+        </div>
+        <div class="pw-rules" id="reset-rules"></div>
+        <button class="btn" type="submit">Set new password</button>
+      </form>
+      <div class="error-msg" id="reset-error"></div>
     </div>
 
     <div id="otp-step" class="hidden">
@@ -1555,19 +1592,85 @@ function show(view) {
   window.scrollTo(0, 0);
 }
 
-// Small wrapper around fetch: attaches the JWT header, parses JSON,
-// and throws a readable error when the API rejects the request.
-async function api(method, path, body) {
+/* ---------- tokens ----------
+   Access tokens last 30 minutes; the refresh token lasts 30 days and is
+   the only thing sent to /refresh. Keeping the access token short means a
+   leaked one stops working quickly, and the refresh token can be revoked
+   server-side, which an access token cannot be. */
+function storeTokens(tok) {
+  if (!tok) return;
+  if (tok.access_token) localStorage.setItem("token", tok.access_token);
+  if (tok.refresh_token) localStorage.setItem("refresh", tok.refresh_token);
+}
+
+function clearTokens() {
+  localStorage.removeItem("token");
+  localStorage.removeItem("refresh");
+}
+
+/* A single in-flight refresh, shared by every caller. Without this, five
+   parallel requests expiring together would fire five refreshes - and
+   because each rotation revokes the previous token, four of them would
+   fail and log the user out. */
+let refreshInFlight = null;
+
+async function refreshSession() {
+  const refresh = localStorage.getItem("refresh");
+  if (!refresh) return false;
+
+  if (!refreshInFlight) {
+    refreshInFlight = (async () => {
+      try {
+        const resp = await fetch(API + "/refresh", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ refresh_token: refresh }),
+        });
+        if (!resp.ok) return false;
+        storeTokens(await resp.json());
+        return true;
+      } catch (_) {
+        return false;
+      } finally {
+        // Cleared on the next tick so concurrent callers all see this
+        // promise rather than starting a second refresh.
+        setTimeout(() => { refreshInFlight = null; }, 0);
+      }
+    })();
+  }
+  return refreshInFlight;
+}
+
+// Endpoints where a 401 is a real answer ("wrong password"), not an
+// expired session - refreshing there would be wrong.
+const NO_REFRESH = ["/login", "/verify-email", "/refresh", "/reset-password", "/forgot-password"];
+
+// Small wrapper around fetch: attaches the JWT header, transparently
+// renews an expired session, parses JSON, and throws a readable error.
+async function api(method, path, body, _retried) {
   const headers = { "Content-Type": "application/json" };
   const token = localStorage.getItem("token");
   if (token) headers["Authorization"] = "Bearer " + token;
+
   const resp = await fetch(API + path, { method, headers, body: body ? JSON.stringify(body) : undefined });
-  if (resp.status === 401 && !["/login", "/verify-email"].includes(path)) { logout(); throw new Error("Session expired - please log in again"); }
+
+  if (resp.status === 401 && !NO_REFRESH.includes(path)) {
+    // One attempt only: if the refreshed token is also rejected, the
+    // session is genuinely over and retrying would loop forever.
+    if (!_retried && await refreshSession()) return api(method, path, body, true);
+    logout(true);
+    throw new Error("Session expired - please log in again");
+  }
+
   if (resp.status === 204) return null;
   const data = await resp.json().catch(() => ({}));
   if (!resp.ok) {
     const detail = typeof data.detail === "string" ? data.detail : "Request failed (" + resp.status + ")";
-    const err = new Error(detail); err.status = resp.status; throw err;
+    const err = new Error(detail);
+    err.status = resp.status;
+    // Returned by the server on a 500 so a user can quote it in a report.
+    err.requestId = data.request_id;
+    throw err;
   }
   return data;
 }
@@ -1823,9 +1926,93 @@ function forgetRemembered() {
   toast("Saved email removed from this device");
 }
 
-function backToCreds() {
-  $("cred-step").classList.remove("hidden");
-  $("otp-step").classList.add("hidden");
+/* The auth card holds four mutually exclusive steps. One function owns
+   which is visible, so they can never both be shown at once. */
+const AUTH_STEPS = ["cred-step", "otp-step", "forgot-step", "reset-step"];
+function showAuthStep(id) {
+  AUTH_STEPS.forEach(s => { const el = $(s); if (el) el.classList.toggle("hidden", s !== id); });
+}
+
+function backToCreds() { showAuthStep("cred-step"); }
+function showCredStep() { showAuthStep("cred-step"); }
+
+function showForgotStep() {
+  showAuthStep("forgot-step");
+  $("forgot-error").textContent = ""; $("forgot-info").textContent = "";
+  // Carry over whatever they already typed, so they don't retype it.
+  $("forgot-email").value = $("in-email").value.trim();
+  $("forgot-email").focus();
+}
+
+async function submitForgot() {
+  const email = $("forgot-email").value.trim();
+  $("forgot-error").textContent = ""; $("forgot-info").textContent = "";
+  if (!email) { $("forgot-error").textContent = "Enter your email address."; return; }
+  try {
+    const resp = await api("POST", "/forgot-password", { email });
+    // Deliberately the same message for a known and an unknown address:
+    // the server won't say which, and neither will we.
+    $("forgot-info").textContent = resp.message;
+  } catch (e) { $("forgot-error").textContent = e.message; }
+}
+
+/* ---------- step 2: the emailed link ----------
+   The token arrives as ?reset=... The query string is stripped from the
+   address bar immediately so the token isn't left in history, in a
+   bookmark, or in whatever the user pastes to a colleague. */
+let resetToken = null;
+
+function openResetFromUrl() {
+  const token = new URLSearchParams(location.search).get("reset");
+  if (!token) return false;
+  resetToken = token;
+  history.replaceState({}, "", location.pathname);
+  show("auth-view");
+  showAuthStep("reset-step");
+  renderResetRules();
+  setTimeout(() => $("reset-password").focus(), 60);
+  return true;
+}
+
+function renderResetRules() {
+  const value = $("reset-password").value;
+  $("reset-rules").innerHTML = PW_RULES.map(([label, test]) => {
+    const ok = test(value);
+    return `<span class="pw-rule ${ok ? "ok" : ""}">${ic(ok ? "check" : "x")}${label}</span>`;
+  }).join("");
+}
+
+function toggleResetPassword() {
+  const input = $("reset-password");
+  input.type = input.type === "text" ? "password" : "text";
+}
+
+function suggestResetPassword() {
+  $("reset-password").value = generatePassword();
+  $("reset-password").type = "text";
+  renderResetRules();
+}
+
+async function submitReset() {
+  const newPassword = $("reset-password").value;
+  $("reset-error").textContent = "";
+  // Check locally first for instant feedback; the server enforces the
+  // same rules regardless, because browser checks can be bypassed.
+  const failed = PW_RULES.filter(([, test]) => !test(newPassword)).map(([label]) => label);
+  if (failed.length) { $("reset-error").textContent = "Password still needs: " + failed.join(", "); return; }
+
+  try {
+    const tok = await api("POST", "/reset-password", { token: resetToken, new_password: newPassword });
+    storeTokens(tok);
+    resetToken = null;
+    toast("Password updated - you're signed in");
+    enterApp();
+  } catch (e) {
+    $("reset-error").textContent = e.message;
+    // An expired or spent link is a dead end, so send them back to ask
+    // for a fresh one rather than leaving them on a form that can't work.
+    if (e.status === 400) setTimeout(showForgotStep, 2500);
+  }
 }
 
 /* ---------- password strength ----------
@@ -1921,7 +2108,7 @@ async function submitAuth() {
       return;
     }
     const tok = await api("POST", "/login", { email, password });
-    localStorage.setItem("token", tok.access_token);
+    storeTokens(tok);
     await rememberIfWanted(email, password);
     enterApp();
   } catch (e) {
@@ -1962,7 +2149,7 @@ async function tryAutoSignIn() {
     const cred = await navigator.credentials.get({ password: true, mediation: "optional" });
     if (!cred || !cred.password) return false;
     const tok = await api("POST", "/login", { email: cred.id, password: cred.password });
-    localStorage.setItem("token", tok.access_token);
+    storeTokens(tok);
     await enterApp();
     return true;
   } catch (e) {
@@ -1997,7 +2184,7 @@ async function submitOtp() {
     // Successful verification returns a token: verified users land
     // straight on their dashboard with no extra login step.
     const tok = await api("POST", "/verify-email", { email: pendingEmail, code });
-    localStorage.setItem("token", tok.access_token);
+    storeTokens(tok);
     // Offer to save the password the user just registered with, too.
     await rememberIfWanted(pendingEmail, $("in-password").value, $("in-name").value);
     enterApp();
@@ -2025,11 +2212,25 @@ async function resendOtp(silent) {
   } catch (e) { if (!silent) $("otp-error").textContent = e.message; }
 }
 
-// Logging out clears the session token but keeps the remembered email,
-// so the next visit is one password away.
-function logout() {
-  localStorage.removeItem("token");
+/* Logging out clears the session tokens but keeps the remembered email,
+   so the next visit is one password away.
+
+   The server is told too, so the refresh token is revoked rather than
+   left live for thirty days. Local state is cleared first and regardless
+   of whether that call succeeds - a logout must never appear to fail. */
+function logout(silent) {
+  const token = localStorage.getItem("token");
+  const refresh = localStorage.getItem("refresh");
+  clearTokens();
   show("landing-view");
+
+  if (token && !silent) {
+    fetch(API + "/logout", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": "Bearer " + token },
+      body: JSON.stringify({ refresh_token: refresh }),
+    }).catch(() => { /* already logged out locally; nothing to recover */ });
+  }
 }
 
 /* ================= dashboard ================= */
@@ -2861,10 +3062,16 @@ function scrollToEl(id, btn) {
   $(id).scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
-// Returning visitors with a valid token skip the landing page; otherwise
-// give the browser a chance to sign them in from a saved credential.
-if (localStorage.getItem("token")) enterApp().catch(logout);
-else if (localStorage.getItem("rememberedEmail")) tryAutoSignIn();
+/* Boot order matters. A reset link wins over an existing session: someone
+   clicking it may be recovering an account another person is logged into
+   on this device, so it must not be swallowed by auto-login. */
+if (openResetFromUrl()) {
+  // Reset screen is showing; nothing else to do.
+} else if (localStorage.getItem("token")) {
+  enterApp().catch(() => logout(true));
+} else if (localStorage.getItem("rememberedEmail")) {
+  tryAutoSignIn();
+}
 </script>
 </body>
 </html>

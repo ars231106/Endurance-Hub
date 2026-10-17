@@ -11,10 +11,21 @@ The app ships as a single Docker image serving both the API and the frontend, so
 | Job | What it does |
 |---|---|
 | **Lint** | `ruff check` across the backend |
+| **Security scan** | `pip-audit` for known CVEs in dependencies, `bandit` for insecure code patterns |
 | **Tests (SQLite)** | Full pytest suite against a throwaway database — fast feedback |
-| **Tests (PostgreSQL)** | The same suite against Postgres 16 in a service container, so dialect-specific bugs can't hide |
+| **Tests (PostgreSQL)** | The same suite against Postgres 16 *and* Redis 7 in service containers, so dialect-specific bugs and the Redis-backed paths are both exercised |
+| **Migrations** | Applies every revision to an empty database, then rolls the whole chain back |
 | **Frontend checks** | Syntax-checks the app script, verifies every icon reference resolves, and fails on duplicate element IDs or inline handlers with no matching function |
-| **Docker** | Builds the image, starts the container and polls `/health` until it responds |
+| **Docker** | Builds the image, polls `/health`, asserts the security headers are present and that the container is not running as root |
+| **Deploy** | Triggers Render's deploy hook — only on `main`, and only after every job above passes |
+
+**CI gates CD.** `autoDeploy` is off in `render.yaml`; deployment is the
+pipeline's final step rather than a parallel subscriber to the same push.
+A red build can no longer reach production.
+
+Set the repository secret `RENDER_DEPLOY_HOOK` (Render → service →
+Settings → Deploy Hook) to enable it. Without the secret the job logs a
+skip and passes.
 
 Run the same checks locally before pushing:
 
@@ -76,8 +87,41 @@ The image is plain Docker, so `fly deploy`, Railway or any container host works.
 | Variable | Required | Notes |
 |---|---|---|
 | `DATABASE_URL` | yes | `postgres://` URLs are normalised to `postgresql://` automatically |
-| `SECRET_KEY` | yes | Signs JWTs. Never ship the development default |
+| `SECRET_KEY` | yes | Signs JWTs. The app refuses to boot in production if this is the default or under 32 characters |
+| `ENVIRONMENT` | no | `production` enables strict config validation and HSTS, and hides `/docs` |
+| `REDIS_URL` | no | Enables distributed rate limiting, token revocation and the analytics cache. Without it the app runs degraded but functional |
+| `SENTRY_DSN` | no | Error reporting |
+| `WEB_CONCURRENCY` | no | Worker processes (default 2) |
+| `DB_POOL_SIZE` / `DB_MAX_OVERFLOW` | no | `workers × (pool + overflow)` must stay under the database's connection limit |
+| `CORS_ORIGINS` | no | Comma-separated. Empty means same-origin only, which is the production arrangement |
 | `SMTP_*` | no | Unset means verification codes are logged instead of emailed |
+
+### Degraded mode
+
+Redis is optional by design — a supporting service must not be able to take
+down the core one. Without `REDIS_URL`:
+
+| Feature | Behaviour |
+|---|---|
+| Rate limiting | Per-process counters: correct with one worker, approximate across several |
+| Token revocation | Unavailable. `/logout` returns `"immediate": false` rather than pretending |
+| Analytics cache | Every request recomputes |
+
+Access tokens are 30 minutes precisely because that is the worst-case
+exposure window in this mode.
+
+### Migrations
+
+Alembic runs automatically at startup. An existing pre-Alembic database is
+*stamped* at the baseline revision rather than having it replayed, so
+upgrading a live deployment needs no manual step.
+
+```bash
+cd backend
+alembic upgrade head        # apply
+alembic downgrade -1        # roll back one
+alembic revision --autogenerate -m "describe the change"
+```
 
 ## Before going public
 

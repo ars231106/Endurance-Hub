@@ -129,6 +129,95 @@ def test_by_sport_totals(client, athlete):
     assert by["football"]["training_load"] == 90 * 7
 
 
+class TestSqlAggregationCorrectness:
+    """The aggregation moved from Python loops into SQL. These pin down the
+    edge cases where a naive SQL rewrite silently changes the answer."""
+
+    def test_zero_distance_is_treated_as_no_distance(self, client, verified_user):
+        """The old code used `if a.distance_km`, which excluded 0 as well as
+        NULL. SUM would happily include a zero and count it as a session."""
+        h = verified_user["headers"]
+        client.post("/activities", json={
+            "activity_type": "strength", "duration_min": 40, "rpe": 7,
+        }, headers=h)
+
+        s = client.get("/analytics/summary", headers=h).json()
+        assert s["distance_sessions"] == 0
+        assert s["other_sessions"] == 1
+        # No distance sessions means pace is undefined, not zero.
+        assert s["avg_pace_min_per_km"] is None
+
+    def test_totals_count_every_sport_but_pace_does_not(self, client, verified_user):
+        h = verified_user["headers"]
+        client.post("/activities", json={
+            "activity_type": "run", "distance_km": 10, "duration_min": 50, "rpe": 6,
+        }, headers=h)
+        client.post("/activities", json={
+            "activity_type": "yoga", "duration_min": 60, "rpe": 2,
+        }, headers=h)
+
+        s = client.get("/analytics/summary", headers=h).json()
+        assert s["total_duration_min"] == 110          # both sessions
+        assert s["avg_pace_min_per_km"] == 5.0         # 50 min / 10 km only
+        assert s["avg_rpe"] == 4.0                     # (6 + 2) / 2
+
+    def test_aggregates_are_scoped_to_one_user(self, client, verified_user, unique_email):
+        """The single most dangerous bug a cached, grouped query can have."""
+        mine = verified_user["headers"]
+        client.post("/activities", json={
+            "activity_type": "run", "distance_km": 8, "duration_min": 40, "rpe": 5,
+        }, headers=mine)
+
+        from conftest import read_otp
+        password = "Other123!"
+        client.post("/register", json={"name": "Other", "email": unique_email, "password": password})
+        token = client.post(
+            "/verify-email", json={"email": unique_email, "code": read_otp(unique_email)}
+        ).json()["access_token"]
+        theirs = {"Authorization": f"Bearer {token}"}
+
+        assert client.get("/analytics/summary", headers=theirs).json()["total_activities"] == 0
+        assert client.get("/analytics/by-sport", headers=theirs).json() == {}
+        assert client.get("/analytics/summary", headers=mine).json()["total_activities"] == 1
+
+    def test_multiple_sessions_on_one_day_are_one_streak_day(self, client, verified_user):
+        """Streak counts DISTINCT dates, so a double day is not a two-day
+        streak - the query returns days, not activities."""
+        h = verified_user["headers"]
+        today = str(date.today())
+        for _ in range(3):
+            client.post("/activities", json={
+                "activity_type": "run", "distance_km": 5, "duration_min": 25,
+                "rpe": 5, "date": today,
+            }, headers=h)
+
+        assert client.get("/analytics/streak", headers=h).json()["current_streak"] == 1
+
+    def test_weekly_buckets_sum_to_the_same_total(self, client, athlete):
+        """Grouping by day in SQL then folding into weeks in Python must not
+        drop or double-count anything."""
+        weeks = client.get("/analytics/weekly?weeks=4", headers=athlete).json()
+        summary = client.get("/analytics/summary", headers=athlete).json()
+
+        bucketed = round(sum(w["duration_min"] for w in weeks), 1)
+        assert bucketed == summary["total_duration_min"]
+
+    def test_records_use_three_different_populations(self, client, verified_user):
+        h = verified_user["headers"]
+        # A 600 m sprint: fastest pace, but too short to hold the record.
+        client.post("/activities", json={
+            "activity_type": "run", "distance_km": 0.6, "duration_min": 2, "rpe": 10,
+        }, headers=h)
+        client.post("/activities", json={
+            "activity_type": "run", "distance_km": 5, "duration_min": 25, "rpe": 6,
+        }, headers=h)
+
+        r = client.get("/analytics/records", headers=h).json()
+        assert r["longest_distance"]["distance_km"] == 5
+        # 5:00/km from the 5 km, not 3:20/km from the sprint.
+        assert r["best_pace"]["pace_min_per_km"] == 5.0
+
+
 def test_analytics_require_authentication(client):
     for path in ["/analytics/summary", "/analytics/weekly", "/analytics/records",
                  "/analytics/streak", "/analytics/load-metrics", "/analytics/thresholds",

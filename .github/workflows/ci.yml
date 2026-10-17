@@ -26,6 +26,27 @@ jobs:
         working-directory: backend
         run: ruff check .
 
+  security:
+    name: Security scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install scanners
+        run: pip install pip-audit bandit
+      - name: Known vulnerabilities in dependencies
+        working-directory: backend
+        # Advisory rather than blocking: a transitive CVE with no fix
+        # available should not stop a deploy, but it must be visible.
+        continue-on-error: true
+        run: pip-audit -r requirements.txt
+      - name: Static analysis for insecure patterns
+        working-directory: backend
+        run: bandit -r app -ll -x app/tests
+
   test:
     name: Tests (SQLite)
     runs-on: ubuntu-latest
@@ -60,6 +81,16 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
+      redis:
+        # Exercises the Redis paths too - rate limiting, revocation and the
+        # analytics cache behave differently when it is present.
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -73,7 +104,47 @@ jobs:
         working-directory: backend
         env:
           TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/endurancehub_test
+          TEST_REDIS_URL: redis://localhost:6379/0
         run: pytest -v
+
+  migrations:
+    name: Migrations apply cleanly
+    runs-on: ubuntu-latest
+    # A migration that only ever runs against a developer's database is a
+    # migration that breaks in production. This applies every revision to
+    # an empty database, then rolls the whole chain back.
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: migration_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install dependencies
+        working-directory: backend
+        run: pip install -r requirements.txt
+      - name: Upgrade to head
+        working-directory: backend
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/migration_test
+        run: alembic upgrade head
+      - name: Downgrade to base
+        working-directory: backend
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/migration_test
+        run: alembic downgrade base
 
   frontend:
     name: Frontend checks
@@ -99,8 +170,6 @@ jobs:
           python3 - <<'PY'
           import re, pathlib, sys
           html = pathlib.Path("frontend/index.html").read_text(encoding="utf-8")
-          # The page has more than one <script> (a tiny pre-paint theme
-          # setter in <head>), so take the largest block - the app itself.
           script = max(re.findall(r"<script>(.*?)</script>", html, re.S), key=len)
           defined = set(re.findall(r'<symbol id="i-([\w-]+)"', html))
           used = (set(re.findall(r'<use href="#i-([\w-]+)"', html))
@@ -116,8 +185,6 @@ jobs:
           python3 - <<'PY'
           import re, pathlib, sys
           html = pathlib.Path("frontend/index.html").read_text(encoding="utf-8")
-          # The page has more than one <script> (a tiny pre-paint theme
-          # setter in <head>), so take the largest block - the app itself.
           script = max(re.findall(r"<script>(.*?)</script>", html, re.S), key=len)
           handlers = (set(re.findall(r'onclick="(\w+)\(', html))
                       | set(re.findall(r'onchange="(\w+)\(', html))
@@ -139,13 +206,50 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: docker build -t endurancehub:ci .
+      - name: Build
+        run: docker build --build-arg GIT_COMMIT=${{ github.sha }} -t endurancehub:ci .
       - name: Container starts and serves /health
         run: |
+          # One worker so the startup migration runs exactly once against
+          # SQLite, which has no cross-process locking to rely on.
           docker run -d --name eh -p 8000:8000 \
-            -e DATABASE_URL=sqlite:///./ci.db -e SECRET_KEY=ci-secret endurancehub:ci
-          for i in $(seq 1 20); do
-            if curl -fs http://localhost:8000/health; then echo " - healthy"; exit 0; fi
+            -e DATABASE_URL=sqlite:///./ci.db \
+            -e SECRET_KEY=ci-secret \
+            -e WEB_CONCURRENCY=1 \
+            endurancehub:ci
+          for i in $(seq 1 30); do
+            if curl -fs http://localhost:8000/health; then echo " - healthy"; break; fi
             sleep 2
+            if [ "$i" = "30" ]; then echo "never became healthy"; docker logs eh; exit 1; fi
           done
-          echo "container never became healthy"; docker logs eh; exit 1
+      - name: Security headers are present
+        run: |
+          headers=$(curl -sI http://localhost:8000/health)
+          for h in "x-content-type-options" "x-frame-options" "content-security-policy"; do
+            echo "$headers" | grep -qi "$h" || { echo "missing header: $h"; exit 1; }
+          done
+          echo "security headers present"
+      - name: Container runs as non-root
+        run: |
+          uid=$(docker exec eh id -u)
+          [ "$uid" != "0" ] || { echo "container is running as root"; exit 1; }
+          echo "running as uid $uid"
+
+  deploy:
+    name: Deploy to Render
+    runs-on: ubuntu-latest
+    # CI gates CD: deployment happens only after every check passes, and
+    # only from main. Previously Render deployed on push regardless of
+    # whether the tests were red.
+    needs: [lint, security, test, test-postgres, migrations, frontend, docker]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    steps:
+      - name: Trigger Render deploy
+        env:
+          HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
+        run: |
+          if [ -z "$HOOK" ]; then
+            echo "RENDER_DEPLOY_HOOK is not set; skipping deploy."
+            exit 0
+          fi
+          curl -fsS -X POST "$HOOK" && echo "deploy triggered"

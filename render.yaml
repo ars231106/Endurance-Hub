@@ -1,21 +1,35 @@
-# Render Blueprint: provisions the web service and its database together.
+# Render Blueprint: provisions the web service.
 # In Render, choose "New > Blueprint" and point it at this repository.
 services:
   - type: web
     name: endurancehub
     runtime: docker
     plan: free
+    # Liveness only - /ready additionally checks the database, which is
+    # the right probe for a load balancer but the wrong one for restarts.
     healthCheckPath: /health
-    # Every push to main redeploys automatically.
-    autoDeploy: true
+    # Deployment is triggered by the CI workflow after tests pass, not by
+    # the push itself, so a red build cannot reach production.
+    autoDeploy: false
     envVars:
-      # Generated once and kept secret - never the dev default.
+      # Generated once and kept secret - never the dev default. The app
+      # refuses to boot in production if this is missing or too short.
       - key: SECRET_KEY
         generateValue: true
+      - key: ENVIRONMENT
+        value: production
       # External Postgres (Neon). Render's free database expires after 30
       # days; Neon's free plan does not, and it wakes from idle on demand.
       # Paste the connection string in the dashboard - never commit it.
       - key: DATABASE_URL
+        sync: false
+      # Optional. Enables distributed rate limiting, token revocation and
+      # the analytics cache. Without it the app runs in a degraded but
+      # fully functional mode.
+      - key: REDIS_URL
+        sync: false
+      # Optional error reporting.
+      - key: SENTRY_DSN
         sync: false
       # Render blocks outbound SMTP, so mail goes over an HTTPS API.
       # Set one of these in the dashboard; unset means codes are logged.
@@ -25,3 +39,15 @@ services:
         sync: false
       - key: RESEND_API_KEY
         sync: false
+      # Worker processes. The free instance has limited CPU, so 2 is the
+      # practical ceiling before workers contend rather than scale.
+      - key: WEB_CONCURRENCY
+        value: "2"
+      # Total pool = WEB_CONCURRENCY x (DB_POOL_SIZE + DB_MAX_OVERFLOW).
+      # Kept well under the database's connection limit.
+      - key: DB_POOL_SIZE
+        value: "3"
+      - key: DB_MAX_OVERFLOW
+        value: "2"
+      - key: JSON_LOGS
+        value: "true"

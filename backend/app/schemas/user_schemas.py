@@ -16,6 +16,19 @@ PASSWORD_RULES = [
 PASSWORD_MIN_LENGTH = 8
 
 
+def check_password_strength(value: str) -> str:
+    """Shared by every endpoint that accepts a NEW password.
+
+    Defined once so registration, reset and change can never drift apart -
+    a reset endpoint with weaker rules than registration is a real and
+    common way for password policy to be quietly bypassed.
+    """
+    missing = [label for pattern, label in PASSWORD_RULES if not re.search(pattern, value)]
+    if missing:
+        raise ValueError("Password must contain " + ", ".join(missing))
+    return value
+
+
 class UserCreate(BaseModel):
     name: str = Field(min_length=1, max_length=100)
     email: str = Field(min_length=3, max_length=255)
@@ -24,10 +37,7 @@ class UserCreate(BaseModel):
     @field_validator("password")
     @classmethod
     def password_is_strong(cls, value: str) -> str:
-        missing = [label for pattern, label in PASSWORD_RULES if not re.search(pattern, value)]
-        if missing:
-            raise ValueError("Password must contain " + ", ".join(missing))
-        return value
+        return check_password_strength(value)
 
 
 class UserLogin(BaseModel):
@@ -65,6 +75,46 @@ class UserOut(BaseModel):
 class Token(BaseModel):
     access_token: str
     token_type: str = "bearer"
+    # Present since the refresh-token rollout. Optional so any client
+    # written against the previous shape keeps parsing responses.
+    refresh_token: Optional[str] = None
+    expires_in: Optional[int] = None
+
+
+class RefreshRequest(BaseModel):
+    refresh_token: str
+
+
+class LogoutRequest(BaseModel):
+    # Optional: a client that only holds an access token can still log out,
+    # it just leaves its refresh token to expire on its own.
+    refresh_token: Optional[str] = None
+
+
+class PasswordResetRequest(BaseModel):
+    email: str = Field(min_length=3, max_length=255)
+
+
+class PasswordResetConfirm(BaseModel):
+    token: str = Field(min_length=16, max_length=512)
+    new_password: str = Field(min_length=PASSWORD_MIN_LENGTH, max_length=128)
+
+    @field_validator("new_password")
+    @classmethod
+    def password_is_strong(cls, value: str) -> str:
+        return check_password_strength(value)
+
+
+class PasswordChange(BaseModel):
+    # Current password required even though the caller is authenticated:
+    # a stolen access token must not be enough to seize an account.
+    current_password: str
+    new_password: str = Field(min_length=PASSWORD_MIN_LENGTH, max_length=128)
+
+    @field_validator("new_password")
+    @classmethod
+    def password_is_strong(cls, value: str) -> str:
+        return check_password_strength(value)
 
 
 class OTPVerify(BaseModel):
