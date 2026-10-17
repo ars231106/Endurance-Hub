@@ -1,5 +1,5 @@
 -r requirements.txt
 
 pytest
-httpx        # required by fastapi.testclient
-ruff         # linting
+httpx            # required by fastapi.testclient
+ruff==0.17.1     # pinned: a linter upgrade should be deliberate, not a surprise red build

@@ -21,7 +21,11 @@ jobs:
         with:
           python-version: "3.11"
           cache: pip
-      - run: pip install ruff
+      # Pinned deliberately. An unpinned linter means a new release can
+      # turn a green build red with no code change - which is exactly what
+      # happened when ruff 0.17 started flagging trailing whitespace inside
+      # an import block. Upgrade on purpose, not by surprise.
+      - run: pip install ruff==0.17.1
       - name: Ruff
         working-directory: backend
         run: ruff check .
@@ -36,7 +40,8 @@ jobs:
           python-version: "3.11"
           cache: pip
       - name: Install scanners
-        run: pip install pip-audit bandit
+        # Pinned for the same reason as ruff above.
+        run: pip install pip-audit==2.9.0 bandit==1.8.6
       - name: Known vulnerabilities in dependencies
         working-directory: backend
         # Advisory rather than blocking: a transitive CVE with no fix

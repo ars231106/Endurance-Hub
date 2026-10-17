@@ -104,7 +104,9 @@ def cache_set(key: str, value: Any, ttl_seconds: int) -> None:
     if client is None:
         return
     try:
-        client.setex(key, ttl_seconds, json.dumps(value, default=str))
+        # set(..., ex=) rather than setex(): redis-py deprecated setex in
+        # 2.6, and the two are equivalent.
+        client.set(key, json.dumps(value, default=str), ex=max(ttl_seconds, 1))
     except Exception as exc:  # noqa: BLE001
         log.warning("cache write failed for %s: %s", key, exc)
         _drop_client()
@@ -136,7 +138,7 @@ def set_add(key: str, ttl_seconds: int) -> bool:
     if client is None:
         return False
     try:
-        client.setex(key, max(ttl_seconds, 1), "1")
+        client.set(key, "1", ex=max(ttl_seconds, 1))
         return True
     except Exception as exc:  # noqa: BLE001
         log.warning("denylist write failed: %s", exc)
